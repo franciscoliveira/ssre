@@ -10,149 +10,91 @@ package ssre_tutorials;
  * @author chico
  */
 
+import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.SecureRandom;
 import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
 
 public class Client {
     public static String mode = "";
-    static public void main(String[] arg) {
+    static public void main(String[] arg) throws IOException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InvalidAlgorithmParameterException {
         byte[] ciphered = new byte[100];
         try {
             
             // Connect to server
             Socket s = new Socket("127.0.0.1",4567);
-            byte[] buffer = new byte[50];
+            byte[] buffer = new byte[48];
             System.out.println("Connected to server...");
             System.out.println("File Name?\n");
             Scanner in = new Scanner(System.in);
             String filename = in.nextLine();
             // Open file to upload
-            FileInputStream fis = new FileInputStream(filename);
+            FileInputStream file = new FileInputStream(filename);
+            BufferedInputStream BufIn = new BufferedInputStream (file);
             // Get socket output stream
             OutputStream sos = s.getOutputStream();
             // Gets the mode from the server
             InputStream getMode = s.getInputStream();
-            while(true) {
-                getMode.read(buffer);
-                String helper = new String(buffer, StandardCharsets.UTF_8);
-                mode = helper;
-                //System.out.println("MODE: " + mode + "\n" + "HELPER: " + helper + "\n");
-                if(helper.equals("")) {
-                    System.out.println("Didn't received mode properly!\n");
-                    sos.write("MODE_NOT_OK".getBytes("UTF-8"));
-                } else {
-                    System.out.println("Received! MODE : " + mode + "\n");
-                    sos.write("MODE_OK".getBytes("UTF-8"));
-                    break;
-                }
-            }
-            InputStream getACK = s.getInputStream();
-            while(true){
-                // Sends the filename so the server can replicate it
-                sos.flush();
-                sos.write(filename.getBytes("UTF-8"));
-                getACK.read(buffer);
-                String helper = new String(buffer, StandardCharsets.UTF_8);
-                if(helper.compareTo("FILENAME_OK") >= 0) {
-                    System.out.println("ACK Received! FILENAME_OK");
-                    break;
-                } else {
-                    System.out.println("ERROR! FILENAME_NOT_OK");
-                    sos.write(filename.getBytes("UTF-8"));
-                }
-            }
-            // reads the file to know the number of bytes it has
+            getMode.read(buffer);
+            String ex = new String(buffer, StandardCharsets.UTF_8);
+            mode = ex;
+            System.out.println("MODE: " + mode + "\n");
+            // Generating IV and KEY
             int bytes_read = 0;
             int total_bytes = 0;
             IvParameterSpec IvEnc = Util.IvGen();
             SecretKeySpec KeyEnc = Util.KeyGen();
-            while(true){
-                sos.flush();
-                sos.write(IvEnc.getIV());
-                getACK.read(buffer);
-                String helper = new String(buffer, StandardCharsets.UTF_8);
-                if(helper.compareTo("IV_OK") >= 0) {
-                    System.out.println("ACK Received! IV_OK\n");
-                        sos.flush();
-                        sos.write(KeyEnc.getEncoded());
-                        getACK.read(buffer);
-                        String confirm = new String(buffer, StandardCharsets.UTF_8);
-                        if(confirm.compareTo("KEY_OK") >= 0) {
-                            System.out.println("ACK Received! KEY_OK\n");
-                            break;
-                        } else { System.out.println("ERROR! KEY_NOT_OK\n"); }
-                } else System.out.println("ERROR! IV_NOT_OK\n");
-            }
-            //byte[] ack = new byte[13];
-            //ack = "CIPHER_OK".getBytes();
-            //boolean howareyou = false;
-            //int compare = 0;
-            //String helper = new String(ack, StandardCharsets.UTF_8);
-            //if it read all the bytes: stop
+            sos.write(IvEnc.getIV());
+            sos.flush();
+            sos.write(KeyEnc.getEncoded());
+            sos.flush();
             Cipher cipher = Cipher.getInstance(Client.mode);
             cipher.init(Cipher.ENCRYPT_MODE, KeyEnc, IvEnc);
-            System.out.println("Reading...\n");
-            OutputStream outCipher = s.getOutputStream();
-            outCipher.flush();
+            //bytes_read = BufIn.read(buffer);
+            bytes_read = file.read(buffer);
             while (true) {
-                //String helper = new String(ack, StandardCharsets.UTF_8);
-                bytes_read = fis.read(buffer);
-                //if(total_bytes < bytes_read) {njhkjkhj
-                    System.out.println("First Round! Sent!\n");
-                    //ciphered = Util.Encryption(buffer, IvEnc, KeyEnc, bytes_read);
-                    ciphered = cipher.update(buffer);
-                    outCipher.write(ciphered, 0, ciphered.length);
-                    outCipher.flush();
+                // Read File 48 bytes each time and print what was read
+                if(bytes_read < 48) {
+                    System.out.println("Over and Out!\n");
+                    ciphered = cipher.doFinal(buffer);
+                    sos.write(ciphered, 0, bytes_read);
                     total_bytes = total_bytes + bytes_read;
-                    String helper = new String(buffer, StandardCharsets.UTF_8);
-                    System.out.println("HELPER: " + helper + "\n");
-                    if(bytes_read < 50) 
-                        break;
-                    /*
-                    if(helper.compareTo("CIPHER_OK") >= 0) {
-                        System.out.println("First Round Reception: OK! \n");
-                        howareyou = true;
-                    } else{
-                        sos.write(ciphered, 0, ciphered.length);
-                        System.out.println("ERROR! CIPHER_NOT_OK!\n");
-                        break;
-                    }*/
-                /*} else /*if(compare >= 0 || howareyou){
-                    System.out.println("Server state: RECEIVING...");
-                    //ciphered = Util.Encryption(buffer, IvEnc, KeyEnc, bytes_read);
-                    ciphered = cipher.update(buffer);
-                    outCipher.write(ciphered, 0, ciphered.length);
-                    outCipher.flush();
-                    total_bytes = total_bytes + bytes_read;
-                    //getACK.read(ack);
-                } /*else {
-                    sos.write(ciphered, 0, ciphered.length);
-                    System.out.println("ERROR! CIPHER_NOT_OK!\n");
+                    break;
                 }
-                String helper = new String(ack, StandardCharsets.UTF_8);
-                compare = helper.compareTo("CIPHER_OK");*/
+                String help = new String(buffer, StandardCharsets.UTF_8);
+                System.out.println("Read from File: " + help + "\n");
+                // Updating Encryption and Write to server
+                ciphered = cipher.update(buffer);
+                sos.write(ciphered, 0, bytes_read);
+                System.out.println("Cipher Length: " + ciphered.length + 
+                        "\nBytes: " + bytes_read + "\n");
+                //bytes_read = BufIn.read(buffer);
+                bytes_read = file.read(buffer);
+                // Counting total bytes
+                total_bytes = total_bytes + bytes_read;
             }
-            cipher.doFinal();
             System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n");
-            //sos.write(ciphered, 0, ciphered.length);
-            //sos.flush();
-
             System.out.println("Disconnected from server.");
 
             // Close socket
             sos.close();
             // Close file
-            fis.close();
+            BufIn.close();
+            file.close();
 
         } catch (Exception ex) {
             ex.printStackTrace();

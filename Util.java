@@ -11,6 +11,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Scanner;
@@ -63,25 +64,8 @@ public class Util {
         }
     }
     
-    public static byte[] Decryption(byte[] cipheredtext, byte[] iv, byte[] key, int order) throws NoSuchAlgorithmException, 
-            NoSuchPaddingException, IOException, InvalidKeyException, 
-            InvalidAlgorithmParameterException, IllegalBlockSizeException, 
-            BadPaddingException{
-        Cipher cipher = Cipher.getInstance(Server.mode);
-        IvParameterSpec ivSpec = new IvParameterSpec(iv);
-        SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
-        if (order > 0 && order == 50) {
-            System.out.println("Updating!\n" + "Order: " + order + "\n" + 
-                    "Cipher Length: " + cipheredtext.length + "\n");
-            return cipher.update(cipheredtext);
-        } else {
-            System.out.println("Finishing! \n");
-            return cipher.doFinal(cipheredtext);
-        }
-    }
     /**
-     * Turns array of bytes into string
+     * Turns array of bytes into Hexadecimal string
      *
      * @param buf   Array of bytes to convert to hex string
      * @return  Generated hex string
@@ -107,6 +91,13 @@ public class Util {
             mac.init(key);
             // create a digest from the byte array
             digest = mac.doFinal(message);
+            
+            //isabel
+            //MessageDigest dgst = MessageDigest.getInstance("SHA");
+       //dgst.update((byte)evo);
+       //Mac mac2 = Mac.getInstance("HmacSHA256");  
+       //mac.init(new SecretKeySpec(dgst.digest(), mode)); 
+       System.out.println("mac iniciado");
 
         } catch (Exception e) { e.printStackTrace(); }
         
