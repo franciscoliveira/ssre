@@ -23,6 +23,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -125,6 +126,18 @@ public class Util {
             fileKey.close();
         } catch (IOException ex) { Logger.getLogger(Util.class.getName()).log(Level.SEVERE, null, ex); }
             return sKeySpec;
+    }
+    
+    public static SecretKey retrieveLongTermKey() 
+    {
+        SecretKey key = GenerateKey.retrieveKey("longterm");
+        if(key == null)
+        {
+            GenerateKey.generateKey("longterm");
+            key = GenerateKey.retrieveKey("longterm");
+        }
+        
+        return key;
     }
     
     public static byte[] Encryption(byte[] info, IvParameterSpec ivSpec, SecretKeySpec sKeySpec, int order){

@@ -28,6 +28,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.SecureRandom;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 
 public class Client {
     public static String mode = "";
@@ -57,13 +58,20 @@ public class Client {
             int bytes_read = 0;
             int total_bytes = 0;
             IvParameterSpec IvEnc = Util.IvGen();
-            SecretKeySpec KeyEnc = Util.KeyGen();
+            
+            // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
+            //SecretKeySpec KeyEnc = Util.KeyGen();
+            SecretKey secretKey = Util.retrieveLongTermKey();
+            
             sos.write(IvEnc.getIV());
             sos.flush();
-            sos.write(KeyEnc.getEncoded());
-            sos.flush();
+            
+            // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
+            //sos.write(secretKey.getEncoded());
+            //sos.flush();
+            
             Cipher cipher = Cipher.getInstance(Client.mode);
-            cipher.init(Cipher.ENCRYPT_MODE, KeyEnc, IvEnc);
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, IvEnc);
             //bytes_read = BufIn.read(buffer);
             bytes_read = file.read(buffer);
             while (true) {

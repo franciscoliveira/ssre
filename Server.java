@@ -19,13 +19,14 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import static trunk.Client.mode;
 
 public class Server {
     public static String mode = "";
-    static byte[] key = new byte[16];
+    //static byte[] key = new byte[16];
     static byte[] iv = new byte[16];
     static public void main(String[] args) {
         try {
@@ -55,9 +56,10 @@ public class Server {
                 int bytes_read;
                 // Get IV and Key from client
                 bytes_read = rcv.read(iv);
-                bytes_read = rcv.read(key);
-                System.out.println("\nIV: " + Util.asHex(iv) + 
-                        "\nKEY: " + Util.asHex(key) + "\n");
+                
+                // bytes_read = rcv.read(key);
+                //System.out.println("\nIV: " + Util.asHex(iv) + 
+                       // "\nKEY: " + Util.asHex(key) + "\n");
                 // Gets cipheredtext to decrypt
                 byte[] cipheredText = new byte[48];
                 byte[] message;
@@ -66,7 +68,9 @@ public class Server {
                     FileOutputStream finalMove = new FileOutputStream("output");
                     Cipher cipher = Cipher.getInstance(Server.mode);
                     IvParameterSpec ivSpec = new IvParameterSpec(iv);
-                    SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
+                    // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
+                    //SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
+                    SecretKey secretKey = Util.retrieveLongTermKey();
                     cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
                     bytes_read = rcv.read(cipheredText);
                     while(bytes_read != -1){
