@@ -1,4 +1,4 @@
-package ssre_tutorials;
+package trunk;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -21,7 +21,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import static ssre_tutorials.Client.mode;
+import static trunk.Client.mode;
 
 public class Server {
     public static String mode = "";

@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ssre_tutorials;
+package trunk;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -120,7 +120,7 @@ public class Util {
             //storingkey
             FileOutputStream fileKey;
         try {
-            fileKey = new FileOutputStream("C:\\Users\\chico\\Documents\\NetBeansProjects\\ssre\\key.txt");
+            fileKey = new FileOutputStream("key.txt");
             fileKey.write(key);
             fileKey.close();
         } catch (IOException ex) { Logger.getLogger(Util.class.getName()).log(Level.SEVERE, null, ex); }
