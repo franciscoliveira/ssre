@@ -26,6 +26,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.SecureRandom;
+import javax.crypto.CipherOutputStream;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
@@ -72,14 +73,26 @@ public class Client {
             
             Cipher cipher = Cipher.getInstance(Client.mode);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, IvEnc);
+            // Tutorial 4.2 Using CipherOutputStream instead of Cipher 
+            CipherOutputStream cos = new CipherOutputStream(sos, cipher);
+            while((bytes_read = file.read(buffer)) != -1)
+            {
+                cos.write(buffer, 0, bytes_read);
+                total_bytes += bytes_read;
+            }
+            cos.close();
             //bytes_read = BufIn.read(buffer);
+            
+            /*
             bytes_read = file.read(buffer);
             while (true) {
                 // Read File 48 bytes each time and print what was read
                 if(bytes_read < 48) {
                     System.out.println("Over and Out!\n");
+                    
                     ciphered = cipher.doFinal(buffer);
                     sos.write(ciphered, 0, bytes_read);
+                    cos.write(buffer, 0, bytes_read);
                     total_bytes = total_bytes + bytes_read;
                     break;
                 }
@@ -95,7 +108,8 @@ public class Client {
                 // Counting total bytes
                 total_bytes = total_bytes + bytes_read;
             }
-            System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n");
+            */
+            System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n"); 
             System.out.println("Disconnected from server.");
 
             // Close socket
