@@ -82,7 +82,12 @@ public class Util {
         return strbuf.toString();
     }
     
-    
+    /*
+    * Method that Generates and Initializes MAC. This method returns the byte array message after the MAC usage
+    * @param byte[] message
+    * @SecretKeySpec key
+    * @return byte[] 
+    */
     public static byte[] GenerateMAC(byte[] message, SecretKeySpec key) {
         byte[] digest = null;
         try {
