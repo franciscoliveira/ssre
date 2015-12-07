@@ -140,6 +140,11 @@ public class Util {
         return key;
     }
     
+    public static SecretKey retrieveSessionKey()
+    {
+        return GenerateKey.generateSessionKey();
+    }
+    
     public static byte[] Encryption(byte[] info, IvParameterSpec ivSpec, SecretKeySpec sKeySpec, int order){
         byte[] cph = new byte[50];
         try {

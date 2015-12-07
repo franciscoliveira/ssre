@@ -2,12 +2,14 @@ package trunk;
 
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
+import javax.crypto.SealedObject;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 
@@ -60,8 +62,16 @@ public class Server {
                     SecretKey secretKey = Util.retrieveLongTermKey();
                     cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
                     
+                    // Tutorial 4.3 using sessionkey and sealedObject
+                    ObjectInputStream ois = new ObjectInputStream(rcv);
+                    SealedObject sealedObject = (SealedObject)ois.readObject();
+                    SecretKey sessionKey = (SecretKey)sealedObject.getObject(cipher);
+                    // Create new cipher with the session key
+                    Cipher sessionCipher = Cipher.getInstance(Server.mode);
+                    sessionCipher.init(Cipher.DECRYPT_MODE, sessionKey, ivSpec);
+                    
                     // Tutorial 4.2 Using CipherInputStream instead of Cipher
-                    CipherInputStream cis = new CipherInputStream(rcv, cipher);
+                    CipherInputStream cis = new CipherInputStream(rcv, sessionCipher);
                     while((bytes_read = cis.read(message)) != -1)
                     {
                         finalMove.write(message,0,bytes_read);

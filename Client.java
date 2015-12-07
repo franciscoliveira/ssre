@@ -14,6 +14,7 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -25,6 +26,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SealedObject;
 import javax.crypto.SecretKey;
 
 public class Client {
@@ -67,10 +69,19 @@ public class Client {
             //sos.write(secretKey.getEncoded());
             //sos.flush();
             
-            Cipher cipher = Cipher.getInstance(Client.mode);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, IvEnc);
+            Cipher longTermCipher = Cipher.getInstance(Client.mode);
+            longTermCipher.init(Cipher.ENCRYPT_MODE, secretKey, IvEnc);
+            // Tutorial 4.3 using sessionkey and sealedobject
+            SecretKey sessionKey = Util.retrieveSessionKey();
+            SealedObject sealedObject = new SealedObject(sessionKey, longTermCipher);
+            ObjectOutputStream oos = new ObjectOutputStream(sos);
+            oos.writeObject(sealedObject);
+            // Create a new cipher with the session key
+            Cipher sessionCipher = Cipher.getInstance(Client.mode);
+            sessionCipher.init(Cipher.ENCRYPT_MODE, sessionKey, IvEnc);
+            
             // Tutorial 4.2 Using CipherOutputStream instead of Cipher 
-            CipherOutputStream cos = new CipherOutputStream(sos, cipher);
+            CipherOutputStream cos = new CipherOutputStream(sos, sessionCipher);
             while((bytes_read = file.read(buffer)) != -1)
             {
                 cos.write(buffer, 0, bytes_read);
