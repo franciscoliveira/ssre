@@ -1,28 +1,15 @@
 package trunk;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Scanner;
-import java.util.regex.Pattern;
-import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
+import javax.crypto.CipherInputStream;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-import static trunk.Client.mode;
 
 public class Server {
     public static String mode = "";
@@ -62,7 +49,7 @@ public class Server {
                        // "\nKEY: " + Util.asHex(key) + "\n");
                 // Gets cipheredtext to decrypt
                 byte[] cipheredText = new byte[48];
-                byte[] message;
+                byte[] message = new byte[50];
                 int total_bytes = 0;
                 try{
                     FileOutputStream finalMove = new FileOutputStream("output");
@@ -72,6 +59,19 @@ public class Server {
                     //SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
                     SecretKey secretKey = Util.retrieveLongTermKey();
                     cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
+                    
+                    // Tutorial 4.2 Using CipherInputStream instead of Cipher
+                    CipherInputStream cis = new CipherInputStream(rcv, cipher);
+                    while((bytes_read = cis.read(message)) != -1)
+                    {
+                        finalMove.write(message,0,bytes_read);
+                        total_bytes += bytes_read;
+                    }
+                    finalMove.close();
+                    cis.close();
+                    System.out.println("Received "+total_bytes+" bytes.");
+                    
+                    /*
                     bytes_read = rcv.read(cipheredText);
                     while(bytes_read != -1){
                         // Read ciphered text
@@ -96,6 +96,7 @@ public class Server {
                         total_bytes = total_bytes + bytes_read;
                         bytes_read = rcv.read(cipheredText);
                     }
+                            */
                 } catch (Exception ex) { ex.printStackTrace(); }
                 s.close();
                 System.out.println("Closed connection.");                
