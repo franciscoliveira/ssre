@@ -12,7 +12,6 @@ package ssre_tutorials;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectOutputStream;
@@ -25,11 +24,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-import java.security.SecureRandom;
 import javax.crypto.CipherOutputStream;
-import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SealedObject;
 import javax.crypto.SecretKey;
 import javax.crypto.Mac;
 import javax.crypto.SealedObject;
@@ -140,7 +137,8 @@ public class Client {
             }
             System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n");
             System.out.println("Disconnected from server.");
-
+            
+            
             // Close socket
             sos.close();
             cos.close();
