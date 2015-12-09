@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package trunk;
+package ssre_tutorials;
 
 /**
  *
@@ -28,9 +28,12 @@ import javax.crypto.CipherOutputStream;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SealedObject;
 import javax.crypto.SecretKey;
+import javax.crypto.Mac;
+import javax.crypto.SealedObject;
 
 public class Client {
     public static String mode = "";
+    public static Mac mac = null;
     static public void main(String[] arg) throws IOException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InvalidAlgorithmParameterException {
         byte[] ciphered = new byte[100];
         try {
@@ -61,6 +64,7 @@ public class Client {
             // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
             //SecretKeySpec KeyEnc = Util.KeyGen();
             SecretKey secretKey = Util.retrieveLongTermKey();
+            //SecretKey secretKeyNumb2 = Util.retrieveLongTermKey();
             
             sos.write(IvEnc.getIV());
             sos.flush();
@@ -82,32 +86,48 @@ public class Client {
             
             // Tutorial 4.2 Using CipherOutputStream instead of Cipher 
             CipherOutputStream cos = new CipherOutputStream(sos, sessionCipher);
-            while((bytes_read = file.read(buffer)) != -1)
+            /*while((bytes_read = file.read(buffer)) != -1)
             {
                 cos.write(buffer, 0, bytes_read);
                 total_bytes += bytes_read;
             }
-            cos.close();
+            cos.close();*/
             //bytes_read = BufIn.read(buffer);
             
-            /*
+            
             bytes_read = file.read(buffer);
+            byte[] macTo;
+            int order = -1;
+            
+            macTo = Util.GenerateMAC(buffer, order, secretKey);
+            
             while (true) {
+                order ++;
+                /*if(macTo == null) {
+                    System.err.println("ERROR! Mac Initialization!");
+                    break;
+                }*/
                 // Read File 48 bytes each time and print what was read
                 if(bytes_read < 48) {
                     System.out.println("Over and Out!\n");
                     
-                    ciphered = cipher.doFinal(buffer);
-                    sos.write(ciphered, 0, bytes_read);
+                    //ciphered = sessionCipher.doFinal(buffer);
+                    macTo = Util.GenerateMAC(buffer, order, secretKey);
                     cos.write(buffer, 0, bytes_read);
+                    cos.flush();
+                    cos.write(macTo, 0, macTo.length);
+                    cos.close();
                     total_bytes = total_bytes + bytes_read;
                     break;
                 }
                 String help = new String(buffer, StandardCharsets.UTF_8);
                 System.out.println("Read from File: " + help + "\n");
                 // Updating Encryption and Write to server
-                ciphered = cipher.update(buffer);
-                sos.write(ciphered, 0, bytes_read);
+                //ciphered = cipher.update(buffer);
+                macTo = Util.GenerateMAC(buffer, order, secretKey);
+                cos.write(buffer, 0, bytes_read);
+                cos.flush();
+                cos.write(macTo);
                 System.out.println("Cipher Length: " + ciphered.length + 
                         "\nBytes: " + bytes_read + "\n");
                 //bytes_read = BufIn.read(buffer);
@@ -115,13 +135,13 @@ public class Client {
                 // Counting total bytes
                 total_bytes = total_bytes + bytes_read;
             }
-            */
-            System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n"); 
+            System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n");
             System.out.println("Disconnected from server.");
             
             
             // Close socket
             sos.close();
+            cos.close();
             // Close file
             BufIn.close();
             file.close();
