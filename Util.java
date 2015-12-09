@@ -118,8 +118,9 @@ public class Util {
                 Client.mac.update(key.getEncoded());
                 Client.mac.update((byte)order);
                 Client.mac.update(message);
-                System.out.println("Generated MAC: "  + Client.mac + "\nUpdating! Order: " + order + "\n");
                 returned = Client.mac.doFinal();
+                System.out.println("Generated MAC: "  + Client.mac + "\nUpdating! Order: " + order + 
+                        "\nMac: " + Util.asHex(returned) + "\n");
                 return returned;
             }
         } catch (NoSuchAlgorithmException | InvalidKeyException | IllegalStateException e) { e.printStackTrace(); }
@@ -163,6 +164,16 @@ public class Util {
         
         return key;
     }
+    
+    /**
+     *
+     * @return 
+     */
+    public static SecretKey retrieveSessionKey()
+    {
+        return Util.generateSessionKey();
+    }
+    
     
     /**
     *

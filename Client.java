@@ -27,6 +27,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.SecureRandom;
+import javax.crypto.CipherOutputStream;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
@@ -75,26 +76,33 @@ public class Client {
             //sos.write(secretKey.getEncoded());
             //sos.flush();
             
-            // First cipher
-            Cipher cipher = Cipher.getInstance(Client.mode);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, IvEnc);
-            // Second Cipher
-            /*Cipher secondCipher = Cipher.getInstance(Client.mode);
-            secondCipher.init(Cipher.ENCRYPT_MODE, secretKeyNumb2, IvEnc);*/
+            Cipher longTermCipher = Cipher.getInstance(Client.mode);
+            longTermCipher.init(Cipher.ENCRYPT_MODE, secretKey, IvEnc);
+            // Tutorial 4.3 using sessionkey and sealedobject
+            SecretKey sessionKey = Util.retrieveSessionKey();
+            SealedObject sealedObject = new SealedObject(sessionKey, longTermCipher);
+            ObjectOutputStream oos = new ObjectOutputStream(sos);
+            oos.writeObject(sealedObject);
+            // Create a new cipher with the session key
+            Cipher sessionCipher = Cipher.getInstance(Client.mode);
+            sessionCipher.init(Cipher.ENCRYPT_MODE, sessionKey, IvEnc);
             
+            // Tutorial 4.2 Using CipherOutputStream instead of Cipher 
+            CipherOutputStream cos = new CipherOutputStream(sos, sessionCipher);
+            /*while((bytes_read = file.read(buffer)) != -1)
+            {
+                cos.write(buffer, 0, bytes_read);
+                total_bytes += bytes_read;
+            }
+            cos.close();*/
             //bytes_read = BufIn.read(buffer);
+            
+            
             bytes_read = file.read(buffer);
             byte[] macTo;
             int order = -1;
             
             macTo = Util.GenerateMAC(buffer, order, secretKey);
-            /*ObjectOutputStream secureOut = new ObjectOutputStream(sos);
-            //SealedObject sealedKey = new
-            secureOut.writeObject(new SealedObject(secretKey, cipher));
-            secureOut.flush();
-            secureOut.writeObject(new SealedObject(secretKeyNumb2, secondCipher));
-            secureOut.flush();
-            secureOut.close();*/
             
             while (true) {
                 order ++;
@@ -105,25 +113,26 @@ public class Client {
                 // Read File 48 bytes each time and print what was read
                 if(bytes_read < 48) {
                     System.out.println("Over and Out!\n");
-                    ciphered = cipher.doFinal(buffer);
+                    
+                    //ciphered = sessionCipher.doFinal(buffer);
                     macTo = Util.GenerateMAC(buffer, order, secretKey);
-                    sos.write(ciphered, 0, bytes_read);
-                    sos.flush();
-                    sos.write(macTo, 0, macTo.length);
+                    cos.write(buffer, 0, bytes_read);
+                    cos.flush();
+                    cos.write(macTo, 0, macTo.length);
+                    cos.close();
                     total_bytes = total_bytes + bytes_read;
                     break;
                 }
                 String help = new String(buffer, StandardCharsets.UTF_8);
                 System.out.println("Read from File: " + help + "\n");
                 // Updating Encryption and Write to server
-                ciphered = cipher.update(buffer);
+                //ciphered = cipher.update(buffer);
                 macTo = Util.GenerateMAC(buffer, order, secretKey);
-                sos.write(ciphered, 0, bytes_read);
-                sos.flush();
-                sos.write(macTo);
+                cos.write(buffer, 0, bytes_read);
+                cos.flush();
+                cos.write(macTo);
                 System.out.println("Cipher Length: " + ciphered.length + 
-                        "\nBytes: " + bytes_read + 
-                        "\nMAC Length: " + macTo.length + "\n");
+                        "\nBytes: " + bytes_read + "\n");
                 //bytes_read = BufIn.read(buffer);
                 bytes_read = file.read(buffer);
                 // Counting total bytes
@@ -134,6 +143,7 @@ public class Client {
 
             // Close socket
             sos.close();
+            cos.close();
             // Close file
             BufIn.close();
             file.close();
