@@ -60,9 +60,6 @@ public class Server {
                 
                 // bytes_read = rcv.read(key);
                 System.out.println("\nIV: " + Util.asHex(iv) + "\n");
-                       // "\nKEY: " + Util.asHex(key) + "\n");
-                // Gets cipheredtext to decrypt
-                //byte[] buffer = new byte[48];
                 byte[] message = new byte[48];
                 int total_bytes = 0;
                 try{
@@ -90,14 +87,6 @@ public class Server {
                     
                     // Tutorial 4.2 Using CipherInputStream instead of Cipher
                     CipherInputStream cis = new CipherInputStream(rcv, sessionCipher);
-                    /*while((bytes_read = cis.read(message)) != -1)
-                    {
-                        finalMove.write(message,0,bytes_read);
-                        total_bytes += bytes_read;
-                    }
-                    finalMove.close();
-                    cis.close();*/
-                    //System.out.println("Received "+total_bytes+" bytes.");
                     
                     bytes_read = cis.read(message);
                     while(bytes_read != -1){

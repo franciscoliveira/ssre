@@ -62,16 +62,9 @@ public class Client {
             IvParameterSpec IvEnc = Util.IvGen();
             
             // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
-            //SecretKeySpec KeyEnc = Util.KeyGen();
             SecretKey secretKey = Util.retrieveLongTermKey();
-            //SecretKey secretKeyNumb2 = Util.retrieveLongTermKey();
-            
             sos.write(IvEnc.getIV());
             sos.flush();
-            
-            // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
-            //sos.write(secretKey.getEncoded());
-            //sos.flush();
             
             Cipher longTermCipher = Cipher.getInstance(Client.mode);
             longTermCipher.init(Cipher.ENCRYPT_MODE, secretKey, IvEnc);
@@ -86,14 +79,6 @@ public class Client {
             
             // Tutorial 4.2 Using CipherOutputStream instead of Cipher 
             CipherOutputStream cos = new CipherOutputStream(sos, sessionCipher);
-            /*while((bytes_read = file.read(buffer)) != -1)
-            {
-                cos.write(buffer, 0, bytes_read);
-                total_bytes += bytes_read;
-            }
-            cos.close();*/
-            //bytes_read = BufIn.read(buffer);
-            
             
             bytes_read = file.read(buffer);
             byte[] macTo;
@@ -103,10 +88,6 @@ public class Client {
             
             while (true) {
                 order ++;
-                /*if(macTo == null) {
-                    System.err.println("ERROR! Mac Initialization!");
-                    break;
-                }*/
                 // Read File 48 bytes each time and print what was read
                 if(bytes_read < 48) {
                     System.out.println("Over and Out!\n");
@@ -130,7 +111,6 @@ public class Client {
                 cos.write(macTo);
                 System.out.println("Cipher Length: " + ciphered.length + 
                         "\nBytes: " + bytes_read + "\n");
-                //bytes_read = BufIn.read(buffer);
                 bytes_read = file.read(buffer);
                 // Counting total bytes
                 total_bytes = total_bytes + bytes_read;
