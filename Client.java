@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package trunk;
+package ssre_tutorials;
 
 /**
  *
@@ -15,6 +15,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -26,13 +27,15 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.SecureRandom;
-import javax.crypto.CipherOutputStream;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.Mac;
+import javax.crypto.SealedObject;
 
 public class Client {
     public static String mode = "";
+    public static Mac mac = null;
     static public void main(String[] arg) throws IOException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InvalidAlgorithmParameterException {
         byte[] ciphered = new byte[100];
         try {
@@ -63,6 +66,7 @@ public class Client {
             // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
             //SecretKeySpec KeyEnc = Util.KeyGen();
             SecretKey secretKey = Util.retrieveLongTermKey();
+            //SecretKey secretKeyNumb2 = Util.retrieveLongTermKey();
             
             sos.write(IvEnc.getIV());
             sos.flush();
@@ -71,28 +75,41 @@ public class Client {
             //sos.write(secretKey.getEncoded());
             //sos.flush();
             
+            // First cipher
             Cipher cipher = Cipher.getInstance(Client.mode);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, IvEnc);
-            // Tutorial 4.2 Using CipherOutputStream instead of Cipher 
-            CipherOutputStream cos = new CipherOutputStream(sos, cipher);
-            while((bytes_read = file.read(buffer)) != -1)
-            {
-                cos.write(buffer, 0, bytes_read);
-                total_bytes += bytes_read;
-            }
-            cos.close();
-            //bytes_read = BufIn.read(buffer);
+            // Second Cipher
+            /*Cipher secondCipher = Cipher.getInstance(Client.mode);
+            secondCipher.init(Cipher.ENCRYPT_MODE, secretKeyNumb2, IvEnc);*/
             
-            /*
+            //bytes_read = BufIn.read(buffer);
             bytes_read = file.read(buffer);
+            byte[] macTo;
+            int order = -1;
+            
+            macTo = Util.GenerateMAC(buffer, order, secretKey);
+            /*ObjectOutputStream secureOut = new ObjectOutputStream(sos);
+            //SealedObject sealedKey = new
+            secureOut.writeObject(new SealedObject(secretKey, cipher));
+            secureOut.flush();
+            secureOut.writeObject(new SealedObject(secretKeyNumb2, secondCipher));
+            secureOut.flush();
+            secureOut.close();*/
+            
             while (true) {
+                order ++;
+                /*if(macTo == null) {
+                    System.err.println("ERROR! Mac Initialization!");
+                    break;
+                }*/
                 // Read File 48 bytes each time and print what was read
                 if(bytes_read < 48) {
                     System.out.println("Over and Out!\n");
-                    
                     ciphered = cipher.doFinal(buffer);
+                    macTo = Util.GenerateMAC(buffer, order, secretKey);
                     sos.write(ciphered, 0, bytes_read);
-                    cos.write(buffer, 0, bytes_read);
+                    sos.flush();
+                    sos.write(macTo, 0, macTo.length);
                     total_bytes = total_bytes + bytes_read;
                     break;
                 }
@@ -100,16 +117,19 @@ public class Client {
                 System.out.println("Read from File: " + help + "\n");
                 // Updating Encryption and Write to server
                 ciphered = cipher.update(buffer);
+                macTo = Util.GenerateMAC(buffer, order, secretKey);
                 sos.write(ciphered, 0, bytes_read);
+                sos.flush();
+                sos.write(macTo);
                 System.out.println("Cipher Length: " + ciphered.length + 
-                        "\nBytes: " + bytes_read + "\n");
+                        "\nBytes: " + bytes_read + 
+                        "\nMAC Length: " + macTo.length + "\n");
                 //bytes_read = BufIn.read(buffer);
                 bytes_read = file.read(buffer);
                 // Counting total bytes
                 total_bytes = total_bytes + bytes_read;
             }
-            */
-            System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n"); 
+            System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n");
             System.out.println("Disconnected from server.");
 
             // Close socket

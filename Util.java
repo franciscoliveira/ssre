@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package trunk;
+package ssre_tutorials;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -11,9 +11,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.security.cert.CertificateException;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,6 +38,12 @@ import javax.crypto.spec.SecretKeySpec;
  * its main purpose it's to make the bytes kind of readable for the programmer
  * @class GenerateMAC as the data byte array and the secret key as an input and returns the MAC byte array of the
  * junction between the message and the MAC
+ * @class generateKey
+ * @class saveKey
+ * @class retrieveKey
+ * @class IvGen
+ * @class KeyGen
+ * @class generateSessionKey
  * @author chico
  */
 public class Util {
@@ -82,34 +91,47 @@ public class Util {
         }
         return strbuf.toString();
     }
-    
-    /*
-    * Method that Generates and Initializes MAC. This method returns the byte array message after the MAC usage
-    * @param byte[] message
-    * @SecretKeySpec key
-    * @return byte[] 
-    */
-    public static byte[] GenerateMAC(byte[] message, SecretKeySpec key) {
-        byte[] digest = null;
-        try {
-            // create a MAC and initialize with the above key
-            Mac mac = Mac.getInstance(key.getAlgorithm());
-            mac.init(key);
-            // create a digest from the byte array
-            digest = mac.doFinal(message);
-            
-            //isabel
-            //MessageDigest dgst = MessageDigest.getInstance("SHA");
-       //dgst.update((byte)evo);
-       //Mac mac2 = Mac.getInstance("HmacSHA256");  
-       //mac.init(new SecretKeySpec(dgst.digest(), mode)); 
-       System.out.println("mac iniciado");
 
-        } catch (Exception e) { e.printStackTrace(); }
+    /**
+     * Method that Generates and Initializes MAC. This method returns the byte array message after the MAC usage
+     * @param message text to cipher using the MAC authentication system
+     * @param order sequence number
+     * @param key secret Key user for the updates!
+     * @return byte array to use
+    */
+    public static byte[] GenerateMAC(byte[] message, int order, SecretKey key) {
+        byte[] returned = null;
+        try {
+            if(order < 0) {
+                // Initialize MAC
+                MessageDigest digestM = MessageDigest.getInstance("SHA");
+                Client.mac = Mac.getInstance("HmacSHA256"); 
+                // First sequence Number
+                System.out.println("MAC Initialized!\nOrder: " + order + 
+                        "\n");
+                order = 0;
+                digestM.update((byte)order);
+                Client.mac.init(new SecretKeySpec(digestM.digest(), Client.mode));
+                return returned;
+            } else if(order >= 0) {
+                // Updating MAC
+                Client.mac.update(key.getEncoded());
+                Client.mac.update((byte)order);
+                Client.mac.update(message);
+                System.out.println("Generated MAC: "  + Client.mac + "\nUpdating! Order: " + order + "\n");
+                returned = Client.mac.doFinal();
+                return returned;
+            }
+        } catch (NoSuchAlgorithmException | InvalidKeyException | IllegalStateException e) { e.printStackTrace(); }
         
-        return digest;
+        return returned;
     }
     
+    /**
+    *
+     * @return 
+     * @throws java.security.NoSuchAlgorithmException
+    */
     public static SecretKeySpec KeyGen() throws NoSuchAlgorithmException{
             // key generation randomly 128
             KeyGenerator keyGen = KeyGenerator.getInstance("AES");
@@ -128,39 +150,24 @@ public class Util {
             return sKeySpec;
     }
     
-    public static SecretKey retrieveLongTermKey() 
-    {
-        SecretKey key = GenerateKey.retrieveKey("longterm");
-        if(key == null)
-        {
-            GenerateKey.generateKey("longterm");
-            key = GenerateKey.retrieveKey("longterm");
+    /**
+    *
+     * @return 
+    */
+    public static SecretKey retrieveLongTermKey() {
+        SecretKey key = retrieveKey("longterm");
+        if(key == null) {
+            generateKey("longterm");
+            key = retrieveKey("longterm");
         }
         
         return key;
     }
     
-    public static byte[] Encryption(byte[] info, IvParameterSpec ivSpec, SecretKeySpec sKeySpec, int order){
-        byte[] cph = new byte[50];
-        try {
-            //initialization vector
-            // random seed for the initialization vector 128
-            Cipher cipher = Cipher.getInstance(Client.mode);
-            cipher.init(Cipher.ENCRYPT_MODE, sKeySpec, ivSpec);
-            // read data from buffer
-            // encrypt
-            if(order > 0 && order == 50) cph = cipher.update(info);
-            else cph = cipher.doFinal(info);
-            // write cph to file bjgjkhj
-            FileOutputStream fos = new FileOutputStream("encripted.txt");
-            fos.write(cph);   
-            fos.close();
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return cph;
-    }
-     
+    /**
+    *
+     * @return 
+    */
     public static IvParameterSpec IvGen (){
             byte[] iv = new byte[16]; //16 bytes = 128 bits
             SecureRandom rand = new SecureRandom();
@@ -168,5 +175,75 @@ public class Util {
             IvParameterSpec ivSpec = new IvParameterSpec(iv);
             System.out.println("Initialization Vector: " + asHex(iv));
             return ivSpec;
+    }
+    
+    // Miguel tutorial 4
+    
+    
+    private static void saveKey(SecretKey key, String alias)
+    {
+        // command line : keytool -list -keystore novaks.jks -storetype JCEKS
+        try
+        {
+            FileInputStream input = null;
+            char[] password = null;
+            try {
+                input = new FileInputStream("novaks.jks");
+                password = "password".toCharArray();
+            } catch(FileNotFoundException fe) { System.out.println(fe.getMessage()); }
+            
+            KeyStore ks = KeyStore.getInstance("JCEKS");
+            ks.load(input, password); 
+            
+            ks.setKeyEntry(alias, key,"password".toCharArray(),null);
+            
+            try (FileOutputStream writeStream = new FileOutputStream("novaks.jks")) {
+                ks.store(writeStream, "password".toCharArray());
+            }
+        } catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException e) { e.printStackTrace(); }
+    }
+    
+    /**
+    *
+     * @param alias
+     * @return 
+    */
+    public static SecretKey retrieveKey(String alias)
+    {
+        try{
+            FileInputStream input = new FileInputStream("novaks.jks");
+            KeyStore ks = KeyStore.getInstance("JCEKS");
+            ks.load(input,"password".toCharArray());
+            SecretKey sk = (SecretKey) ks.getKey(alias, "password".toCharArray());
+            return sk;
+        } catch (Exception e){ System.err.println(e.getMessage()); }
+        return null;
+    }
+    
+    /**
+    *
+     * @param alias
+    */
+    public static void generateKey(String alias)
+    {
+            try{
+                KeyGenerator kg = KeyGenerator.getInstance("AES");
+                SecretKey sk = kg.generateKey();
+                saveKey(sk, alias);
+            } catch (Exception e) { System.err.println(e.getMessage()); }  
+    } 
+    
+    /**
+    *
+     * @return 
+    */
+    public static SecretKey generateSessionKey()
+    {
+        try {
+            KeyGenerator kg = KeyGenerator.getInstance("AES");
+            SecretKey sk = kg.generateKey();
+            return sk;
+        } catch (Exception e) { System.err.println(e.getMessage()); }
+        return null;
     }
 }
