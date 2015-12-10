@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ssre_tutorials;
+package trunk;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -11,6 +11,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.MessageDigest;
@@ -255,6 +257,19 @@ public class Util {
             SecretKey sk = kg.generateKey();
             return sk;
         } catch (Exception e) { System.err.println(e.getMessage()); }
+        return null;
+    }
+    
+    public static KeyPair generateSessionRSAPair()
+    {
+        try {
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+            kpg.initialize(2048);
+            KeyPair kp = kpg.generateKeyPair();
+            return kp;
+        } catch (Exception ex) {
+            System.err.println(ex.getMessage());
+        }
         return null;
     }
 }

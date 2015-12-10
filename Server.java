@@ -1,16 +1,20 @@
-package ssre_tutorials;
+package trunk;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Arrays;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -32,6 +36,7 @@ public class Server {
             
             // Start upload counter
             int counter = 0;
+            int bytes_read = -1;
             
             System.out.println("Server started ...");
 
@@ -50,38 +55,54 @@ public class Server {
                 InputStream rcv = s.getInputStream();
                 OutputStream outData = s.getOutputStream();
                 outData.write(mode.getBytes("UTF-8"));
-                int bytes_read;
-                // Get IV and Key from client
-                bytes_read = rcv.read(iv);
-
-                System.out.println("\nIV: " + Util.asHex(iv) + "\n");
+                
+                
+                
+                
+                
                 byte[] message = new byte[48];
                 int total_bytes = 0;
                 try{
+                    // Tutorial 6, sending public key to client
+                    KeyPair keyPair = Util.generateSessionRSAPair();
+                    PublicKey publicKey = keyPair.getPublic();
+                    PrivateKey privateKey = keyPair.getPrivate();
+                    ObjectOutputStream oos = new ObjectOutputStream(outData);
+                    oos.writeObject(publicKey);
+                    System.out.println("Sent public key: "+Util.asHex(publicKey.getEncoded()));
+                    
                     FileOutputStream finalMove = new FileOutputStream("output.txt");
-                    Cipher cipher = Cipher.getInstance(Server.mode);
+                    Cipher cipher = Cipher.getInstance("RSA/ECB/NoPadding");
                     IvParameterSpec ivSpec = new IvParameterSpec(iv);
                     // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
                     //SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
-                    SecretKey secretKey = Util.retrieveLongTermKey();
-                    cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec);
+                    //SecretKey secretKey = Util.retrieveLongTermKey();
+                    // Tutorial 6, changing symmetric cipher for RSA pair
+                    cipher.init(Cipher.DECRYPT_MODE, privateKey);
                     //bytes_read = rcv.read(buffer);
-                    // MAC initializing
-                    int order = -1;
-                    Util.GenerateMAC(buffer, order, secretKey);
-                    byte[] macArray = new byte[32];
-                    byte[] serverMAC;
                     
                     // Tutorial 4.3 using sessionkey and sealedObject
                     ObjectInputStream ois = new ObjectInputStream(rcv);
+                    
                     SealedObject sealedObject = (SealedObject)ois.readObject();
                     SecretKey sessionKey = (SecretKey)sealedObject.getObject(cipher);
+                    
+                    // Get IV and Key from client
+                    bytes_read = rcv.read(iv);
+                    System.out.println("\nIV: " + Util.asHex(iv) + "\n");
+
                     // Create new cipher with the session key
                     Cipher sessionCipher = Cipher.getInstance(Server.mode);
                     sessionCipher.init(Cipher.DECRYPT_MODE, sessionKey, ivSpec);
                     
                     // Tutorial 4.2 Using CipherInputStream instead of Cipher
                     CipherInputStream cis = new CipherInputStream(rcv, sessionCipher);
+                    
+                    // MAC initializing
+                    int order = -1;
+                    Util.GenerateMAC(buffer, order, sessionKey);
+                    byte[] macArray = new byte[32];
+                    byte[] serverMAC;
                     
                     bytes_read = cis.read(message);
                     while(bytes_read != -1){
@@ -91,7 +112,7 @@ public class Server {
                         String ex = new String(message, StandardCharsets.UTF_8);
                         System.out.println("Message: " + ex + "\n");
                         cis.read(macArray);
-                        serverMAC = Util.GenerateMAC(message, order, secretKey);
+                        serverMAC = Util.GenerateMAC(message, order, sessionKey);
                         System.out.println("Received MAC: " + Util.asHex(macArray) + 
                                 "\nCalculated MAC: " + Util.asHex(serverMAC) + 
                                 "\nLengths: " + macArray.length + " read Bytes. | " 
