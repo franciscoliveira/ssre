@@ -72,7 +72,7 @@ public class Server {
                     System.out.println("Sent public key: "+Util.asHex(publicKey.getEncoded()));
                     
                     FileOutputStream finalMove = new FileOutputStream("output.txt");
-                    Cipher cipher = Cipher.getInstance("RSA/ECB/NoPadding");
+                    Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
                     IvParameterSpec ivSpec = new IvParameterSpec(iv);
                     // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
                     //SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
@@ -86,6 +86,7 @@ public class Server {
                     
                     SealedObject sealedObject = (SealedObject)ois.readObject();
                     SecretKey sessionKey = (SecretKey)sealedObject.getObject(cipher);
+                    System.out.println("Received Session Key: "+Util.asHex(sessionKey.getEncoded()));
                     
                     // Get IV and Key from client
                     bytes_read = rcv.read(iv);
@@ -162,6 +163,7 @@ public class Server {
                     break;
             }           
         } catch (Exception ex) {
+            System.err.println(ex.getLocalizedMessage());
             ex.printStackTrace();
         }
     }

@@ -73,7 +73,7 @@ public class Client {
             
             
             // Tutorial 6, using public key received from server to encrypt session key
-            Cipher publicKeyCipher = Cipher.getInstance("RSA/ECB/NoPadding");
+            Cipher publicKeyCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
             publicKeyCipher.init(Cipher.ENCRYPT_MODE, publicKey);
             // Tutorial 4.3 using sessionkey and sealedobject
             SecretKey sessionKey = Util.retrieveSessionKey();
@@ -82,8 +82,7 @@ public class Client {
             ObjectOutputStream oos = new ObjectOutputStream(sos);
             oos.flush();
             oos.writeObject(sealedObject);
-            System.out.println("Sent Session Key");
-            Thread.sleep(1000);
+            System.out.println("Sent Session Key: "+Util.asHex(sessionKey.getEncoded()));
             
             // Sent IV 
             sos.write(IvEnc.getIV());
