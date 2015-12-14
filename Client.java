@@ -99,8 +99,10 @@ public class Client {
             bytes_read = file.read(buffer);
             byte[] macTo;
             int order = -1;
+            System.out.println("1st time bytes_read: "+bytes_read);
             
-            macTo = Util.GenerateMAC(buffer, order, sessionKey);
+            //macTo = Util.GenerateMAC(buffer, order, sessionKey, mac);
+            mac = Util.initializeMac(order, sessionKey);
             
             while (true) {
                 order ++;
@@ -108,7 +110,7 @@ public class Client {
                 if(bytes_read < 48) {
                     System.out.println("Over and Out!\n");
                     
-                    macTo = Util.GenerateMAC(buffer, order, sessionKey);
+                    macTo = Util.GenerateMAC(buffer, order, sessionKey, mac);
                     cos.write(buffer, 0, bytes_read);
                     cos.flush();
                     cos.write(macTo, 0, macTo.length);
@@ -119,7 +121,7 @@ public class Client {
                 String help = new String(buffer, StandardCharsets.UTF_8);
                 System.out.println("Read from File: " + help + "\n");
                 // Updating Encryption and Write to server
-                macTo = Util.GenerateMAC(buffer, order, sessionKey);
+                macTo = Util.GenerateMAC(buffer, order, sessionKey, mac);
                 cos.write(buffer, 0, bytes_read);
                 //cos.flush();
                 cos.write(macTo);

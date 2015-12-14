@@ -20,6 +20,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SealedObject;
 import javax.crypto.SecretKey;
@@ -27,6 +28,7 @@ import javax.crypto.spec.IvParameterSpec;
 
 public class Server {
     public static String mode = "";
+    public static Mac mac = null;
     //static byte[] key = new byte[16];
     static byte[] iv = new byte[16];
     static public void main(String[] args) throws InvalidKeyException, InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchPaddingException, IOException, ClassNotFoundException, IllegalBlockSizeException, BadPaddingException {
@@ -73,7 +75,7 @@ public class Server {
                     
                     FileOutputStream finalMove = new FileOutputStream("output.txt");
                     Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-                    IvParameterSpec ivSpec = new IvParameterSpec(iv);
+                    
                     // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
                     //SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
                     //SecretKey secretKey = Util.retrieveLongTermKey();
@@ -90,6 +92,7 @@ public class Server {
                     
                     // Get IV and Key from client
                     bytes_read = rcv.read(iv);
+                    IvParameterSpec ivSpec = new IvParameterSpec(iv);
                     System.out.println("\nIV: " + Util.asHex(iv) + "\n");
 
                     // Create new cipher with the session key
@@ -101,7 +104,8 @@ public class Server {
                     
                     // MAC initializing
                     int order = -1;
-                    Util.GenerateMAC(buffer, order, sessionKey);
+                    //Util.GenerateMAC(buffer, order, sessionKey, mac);
+                    mac = Util.initializeMac(order, sessionKey);
                     byte[] macArray = new byte[32];
                     byte[] serverMAC;
                     
@@ -113,7 +117,7 @@ public class Server {
                         String ex = new String(message, StandardCharsets.UTF_8);
                         System.out.println("Message: " + ex + "\n");
                         cis.read(macArray);
-                        serverMAC = Util.GenerateMAC(message, order, sessionKey);
+                        serverMAC = Util.GenerateMAC(message, order, sessionKey, mac);
                         System.out.println("Received MAC: " + Util.asHex(macArray) + 
                                 "\nCalculated MAC: " + Util.asHex(serverMAC) + 
                                 "\nLengths: " + macArray.length + " read Bytes. | " 

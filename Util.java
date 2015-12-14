@@ -94,34 +94,56 @@ public class Util {
         return strbuf.toString();
     }
 
+    public static Mac initializeMac(int order, SecretKey key)
+    {
+        try
+        {
+            // Initialize MAC
+            MessageDigest digestM = MessageDigest.getInstance("SHA");
+            Mac mac = Mac.getInstance("HmacSHA256"); 
+            // First sequence Number
+            System.out.println("MAC Initialized!\nOrder: " + order + 
+                        "\n");
+            order = 0;
+            digestM.update((byte)order);
+            mac.init(new SecretKeySpec(digestM.digest(), Client.mode));
+            return mac;
+        } catch (Exception e)
+        {
+            System.err.println(e.getLocalizedMessage());
+        }
+        return null;
+    }
+    
     /**
      * Method that Generates and Initializes MAC. This method returns the byte array message after the MAC usage
      * @param message text to cipher using the MAC authentication system
      * @param order sequence number
      * @param key secret Key user for the updates!
+     * @param mac
      * @return byte array to use
     */
-    public static byte[] GenerateMAC(byte[] message, int order, SecretKey key) {
+    public static byte[] GenerateMAC(byte[] message, int order, SecretKey key, Mac mac) {
         byte[] returned = null;
         try {
             if(order < 0) {
                 // Initialize MAC
                 MessageDigest digestM = MessageDigest.getInstance("SHA");
-                Client.mac = Mac.getInstance("HmacSHA256"); 
+                mac = Mac.getInstance("HmacSHA256"); 
                 // First sequence Number
                 System.out.println("MAC Initialized!\nOrder: " + order + 
                         "\n");
                 order = 0;
                 digestM.update((byte)order);
-                Client.mac.init(new SecretKeySpec(digestM.digest(), Client.mode));
+                mac.init(new SecretKeySpec(digestM.digest(), Client.mode));
                 return returned;
             } else if(order >= 0) {
                 // Updating MAC
-                Client.mac.update(key.getEncoded());
-                Client.mac.update((byte)order);
-                Client.mac.update(message);
-                returned = Client.mac.doFinal();
-                System.out.println("Generated MAC: "  + Client.mac + "\nUpdating! Order: " + order + 
+                mac.update(key.getEncoded());
+                mac.update((byte)order);
+                mac.update(message);
+                returned = mac.doFinal();
+                System.out.println("Generated MAC: "  + mac + "\nUpdating! Order: " + order + 
                         "\nMac: " + Util.asHex(returned) + "\n");
                 return returned;
             }
