@@ -304,6 +304,14 @@ public class Util {
         return null;
     }
     
+    /**
+     *
+     * @param belongs String expecting "server" or "TA" 
+     * @return KeyPair of belongs especified
+     * @throws NoSuchAlgorithmException
+     * @throws InvalidKeySpecException
+     * @throws IOException
+     */
     public static KeyPair retrieveRSAPair(String belongs) throws NoSuchAlgorithmException, InvalidKeySpecException, IOException
     {
         String publicKeyFile;
