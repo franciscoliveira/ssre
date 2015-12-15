@@ -66,12 +66,20 @@ public class Server {
                 int total_bytes = 0;
                 try{
                     // Tutorial 6, sending public key to client
-                    KeyPair keyPair = Util.generateSessionRSAPair();
+                    // KeyPair keyPair = Util.generateSessionRSAPair();
+                    // Tutorial 7, getting public keyPair from a file and signature
+                    KeyPair keyPair = Util.retrieveRSAPair("server");
+                    byte[] signature = Util.retrieveSignature();
+                    System.out.println("Signature: "+Util.asHex(signature));
+                    //if(Util.verifySignature(signature, keyPair.getPublic()))
+                        System.out.println("Signature is correct");
+                    
                     PublicKey publicKey = keyPair.getPublic();
                     PrivateKey privateKey = keyPair.getPrivate();
                     ObjectOutputStream oos = new ObjectOutputStream(outData);
                     oos.writeObject(publicKey);
                     System.out.println("Sent public key: "+Util.asHex(publicKey.getEncoded()));
+                    oos.writeObject(signature);
                     
                     FileOutputStream finalMove = new FileOutputStream("output.txt");
                     Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -117,7 +125,8 @@ public class Server {
                         String ex = new String(message, StandardCharsets.UTF_8);
                         System.out.println("Message: " + ex + "\n");
                         cis.read(macArray);
-                        serverMAC = Util.GenerateMAC(message, order, sessionKey, mac);
+                        
+                        serverMAC = Util.GenerateMAC(Arrays.copyOfRange(message, 0, bytes_read), order, sessionKey, mac);
                         System.out.println("Received MAC: " + Util.asHex(macArray) + 
                                 "\nCalculated MAC: " + Util.asHex(serverMAC) + 
                                 "\nLengths: " + macArray.length + " read Bytes. | " 

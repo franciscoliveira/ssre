@@ -22,6 +22,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.util.Arrays;
 import java.util.Scanner;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
@@ -62,6 +63,17 @@ public class Client {
             ObjectInputStream ois = new ObjectInputStream(getMode);
             PublicKey publicKey = (PublicKey)ois.readObject();
             System.out.println("Received Public Key: "+Util.asHex(publicKey.getEncoded()));
+            
+            // Tutorial 7, receiving signature from server
+            byte[] signature = (byte[])ois.readObject();
+            if(Util.verifySignature(signature, publicKey))
+            {
+                System.out.println("Signature is ok!");
+            } else
+            {
+                System.out.println("Signature and public key from server don't match. Server isn't trusted by TA");
+                System.exit(-1);
+            }
             
             // Generating IV and KEY
             int bytes_read = 0;
@@ -110,7 +122,8 @@ public class Client {
                 if(bytes_read < 48) {
                     System.out.println("Over and Out!\n");
                     
-                    macTo = Util.GenerateMAC(buffer, order, sessionKey, mac);
+                    macTo = Util.GenerateMAC(Arrays.copyOfRange(buffer, 0, bytes_read), order, sessionKey, mac);
+                    
                     cos.write(buffer, 0, bytes_read);
                     cos.flush();
                     cos.write(macTo, 0, macTo.length);

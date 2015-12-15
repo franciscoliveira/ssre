@@ -11,14 +11,23 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.Signature;
+import java.security.SignatureException;
 import java.security.cert.CertificateException;
+import java.security.spec.EncodedKeySpec;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -282,7 +291,7 @@ public class Util {
         return null;
     }
     
-    public static KeyPair generateSessionRSAPair()
+    private static KeyPair generateSessionRSAPair()
     {
         try {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -294,4 +303,153 @@ public class Util {
         }
         return null;
     }
+    
+    public static KeyPair retrieveRSAPair(String belongs) throws NoSuchAlgorithmException, InvalidKeySpecException, IOException
+    {
+        String publicKeyFile;
+        String privateKeyFile;
+        
+        if(((belongs.compareTo("server") == 0) || (belongs.compareTo("TA") ==0)) != true)
+        {
+            System.err.println("Bad usage: string must be server or TA");
+            return null;
+        } else
+        {
+            publicKeyFile = belongs+"publicKey";
+            privateKeyFile = belongs+"privateKey";
+        }
+        
+        FileInputStream pkis = null;
+        FileInputStream privatekis = null;
+        FileOutputStream pkos = null;
+        FileOutputStream privatekos = null;
+        PublicKey publicKey;
+        PrivateKey privateKey;
+        
+        boolean pairExists = true;
+        try {
+            pkis = new FileInputStream(publicKeyFile);
+            privatekis = new FileInputStream(privateKeyFile);
+        } catch (FileNotFoundException e)
+        {
+            pairExists = false;
+        }
+        
+        KeyPair kp;
+        byte[] publicKeyBytes = new byte[2048];
+        byte[] privateKeyBytes = new byte[2048];
+        
+        if(pairExists)
+        {
+            try {
+                pkis.read(publicKeyBytes);
+                privatekis.read(privateKeyBytes);
+            } catch (IOException ex) {
+                Logger.getLogger(Util.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            EncodedKeySpec publickSpec = new X509EncodedKeySpec(publicKeyBytes);
+            publicKey = keyFactory.generatePublic(publickSpec);
+            
+            EncodedKeySpec privatekSpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+            privateKey = keyFactory.generatePrivate(privatekSpec);
+            
+            kp = new KeyPair(publicKey, privateKey);
+            
+        } else 
+        {
+            
+            kp = generateSessionRSAPair();
+            publicKey = kp.getPublic();
+            privateKey = kp.getPrivate();
+            
+            try {    
+                pkos = new FileOutputStream(publicKeyFile);
+                privatekos = new FileOutputStream(privateKeyFile);
+                pkos.write(publicKey.getEncoded());
+                privatekos.write(privateKey.getEncoded());
+            } catch (IOException ex) {
+                Logger.getLogger(Util.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+        return kp;
+    }
+    
+    private static byte[] signRSAPair(KeyPair kp) throws NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException, IOException, SignatureException
+    {
+        byte[] sign;
+        
+        KeyPair TAKeyPair = retrieveRSAPair("TA");
+        Signature signature = Signature.getInstance("SHA1withRSA");
+        signature.initSign(TAKeyPair.getPrivate());
+        signature.update(kp.getPublic().getEncoded());
+        sign = signature.sign();
+        
+        return sign;
+    }
+    
+    /**
+     * Retrieve signature for the server public key; if it doesn't exists, it creates one.
+     * 
+     * @return Return Signature
+     */
+    public static byte[] retrieveSignature() 
+    {
+        boolean exists = true;
+        byte[] signature = new byte[256];
+        FileInputStream fis = null;
+        FileOutputStream fos = null;
+        try {
+            fis = new FileInputStream("sign");
+        } catch (FileNotFoundException ex) {
+            exists = false;
+        }
+        
+        if(exists)
+        {
+            try {
+                fis.read(signature);
+                fis.close();
+            } catch (Exception e) {
+                System.err.println(e.getLocalizedMessage());
+            }
+            return signature;
+        } else
+        {
+            try {
+                signature = signRSAPair(retrieveRSAPair("server"));
+                fos = new FileOutputStream("sign");
+                fos.write(signature);
+                fos.close();
+            } catch (Exception e) {
+                System.err.println(e.getLocalizedMessage());
+            }
+            return signature;
+        }
+    }
+    
+    /**
+     * Verify signature for a choosen public key usign TA Public Key in the file system
+     * @param signature signature that is going to be verified
+     * @param publicKey public key that is going to be verified
+     * @return Returns true or false either the signature is valid
+     */
+    public static boolean verifySignature(byte[] signature, PublicKey publicKey)
+    {
+        try
+        {
+            KeyPair TAKeyPair = retrieveRSAPair("TA");
+            Signature sig = Signature.getInstance("SHA1withRSA");
+            sig.initVerify(TAKeyPair.getPublic());
+            sig.update(publicKey.getEncoded());
+            return sig.verify(signature);
+        } catch (Exception e)
+        {
+            System.err.println("Verify Signature: "+e.getLocalizedMessage());
+        }
+        return false;
+    }
+    
 }
