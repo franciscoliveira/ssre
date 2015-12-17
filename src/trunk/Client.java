@@ -153,7 +153,6 @@ public class Client {
                             System.out.println("Bytes read "+bytes_read);
                             cos.write(((byte)bytes_read));
                             cos.write(buffer, 0, bytes_read);
-                            //cos.flush();
                             cos.write(macTo);
                             System.out.println("Cipher Length: " + buffer.length +
                                     "\nBytes: " + bytes_read + "\n");
@@ -165,16 +164,17 @@ public class Client {
                             macTo = Util.GenerateMAC(Arrays.copyOfRange(buffer, 0, bytes_read), order, sessionKey, mac, bytes_read);
                             System.out.println("Read from File: " + help + "\nMessage bytes: " + bytes_read + "\n");
                             cos.write(((byte)bytes_read));
-                            cos.write(Arrays.copyOfRange(buffer, 0, bytes_read));
-                            cos.flush();
+                            cos.write(buffer,0,bytes_read);
                             System.out.println("Last Bit sent!\n");
                             cos.write(macTo);
-                            cos.flush();
                             System.out.println("Last Mac sent! Bytes: " + macTo.length + 
                                     "\nMac: " + Util.asHex(macTo) + "\nMessage: " + buffer + "\n");
                             total_bytes = total_bytes + bytes_read;
                             System.out.println("Waiting for server's closure!\n");
-                            getMode.read(buffer);
+                            while(getMode.read() != -1)
+                            {
+                                System.out.println("Waiting");
+                            }
                             help = new String(Arrays.copyOfRange(buffer, 0, bytes_read), StandardCharsets.UTF_8);
                             System.out.println("Server says: " + help + "\n");
                             getMode.close();

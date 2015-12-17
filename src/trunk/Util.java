@@ -159,8 +159,8 @@ public class Util {
                 // Updating MAC
                 mac.update(key.getEncoded());
                 mac.update((byte)order);
-                mac.update(Arrays.copyOfRange(message, 0, bytes));
-                returned = mac.doFinal();
+                //mac.update(message);
+                returned = mac.doFinal(message);
                 System.out.println("Generated MAC: "  + mac + "\nUpdating! Order: " + order + 
                         "\nMac: " + Util.asHex(returned) + "\n");
                 return returned;

@@ -61,6 +61,7 @@ public class Server {
                 OutputStream outData = s.getOutputStream();
                 outData.write(mode.getBytes("UTF-8"));
                 
+                
                 byte[] message = new byte[48];
                 int total_bytes = 0;
                 try{
@@ -152,19 +153,20 @@ public class Server {
                         order ++;
                         cis.read(message,0,1);
                         bytes_read = message[0] & 0xFF;
-                        System.out.println("Bytes read :"+bytes_read);
                         bytes_read = cis.read(message,0,bytes_read);
+                        System.out.println("Bytes read :"+bytes_read);
                         
                         String ex = new String(Arrays.copyOfRange(message, 0, bytes_read), StandardCharsets.UTF_8);
                         // Decryption
                         //message = cipher.update(buffer);                        
                        
                         mac_bytes = cis.read(macArray);
+                        System.out.println("Read Mac: "+Util.asHex(macArray));
                         // Final Piece
                         if(bytes_read < 48) {
                             System.out.println("Last Message Received: "+ex);
                             //message = cipher.doFinal(buffer);
-                            System.out.println("It'll all be over soon!\nFinal Piece: " + ex + "\n");
+                            System.out.println("It'll all be over soon!\n Final Piece: " + ex + "\n");
                             serverMAC = Util.GenerateMAC(Arrays.copyOfRange(message, 0, bytes_read), order, sessionKey, mac, bytes_read);
                             System.out.println("I'm here!\n");   
                             if (Arrays.equals(serverMAC, macArray)){
