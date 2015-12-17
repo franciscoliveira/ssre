@@ -77,30 +77,24 @@ public class Client {
                 System.exit(-1);
                 }*/
                 // Tutorial 8
-                // Upload da private key do client
+                // Client's private key
                 RSAPrivateKey clientPrivKey = Util.getPrivateKeys("client");
-                
-                // Upload do certificado do cliente
                 ValidateCertPath validateCertPath = new ValidateCertPath();
                 X509Certificate clientCert = ValidateCertPath.getCertFromFile("./client.cer");
-
                 ObjectInputStream ois = new ObjectInputStream(getMode);
                 X509Certificate serverCertificate = (X509Certificate) ois.readObject();
-                System.out.println("Certificado do servidor recebido.\n");
+                System.out.println("Got server's certificate.\n");
                 
-                try ( // Envio do certificado do cliente
-                        ObjectOutputStream oos = new ObjectOutputStream(sos)) {
+                try ( 
+                    // Time to send Certificate
+                    ObjectOutputStream oos = new ObjectOutputStream(sos)) {
                     oos.writeObject(clientCert);
                     //oos.flush();
-                    System.out.println("Certificado do cliente enviado.\n");
-                    
-                    //Caminho para validação do certificado do servidor
+                    System.out.println("Client's certificate sent.\n");
+                    // Validation server Path
                     CertPath srvCertPath = ValidateCertPath.createPath(serverCertificate);
-                    
-                    // Validação do certificado do servidor
-                    System.out.println("Certifcado de servidor validado: " + validateCertPath.validate("./ca.cer", srvCertPath) + "\n");
-                    
-                    // Obtenção da chave pública do servidor a partir do certificado
+                    System.out.println("Certificate OK! Validation: " + validateCertPath.validate("./ca.cer", srvCertPath) + "\n");
+                    // Getting public Key from certificate
                     PublicKey publicKey = serverCertificate.getPublicKey();
                     
                     // Generating IV and KEY
@@ -115,11 +109,8 @@ public class Client {
                     sos.write(response);
                     //oos.flush();
                     System.out.println("Response sent!\n");
-                    
                     // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
                     //SecretKey secretKey = Util.retrieveLongTermKey();
-                    
-                    
                     // Tutorial 6, using public key received from server to encrypt session key
                     Cipher publicKeyCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
                     publicKeyCipher.init(Cipher.ENCRYPT_MODE, publicKey);
@@ -143,41 +134,51 @@ public class Client {
                     CipherOutputStream cos = new CipherOutputStream(sos, sessionCipher);
                     cos.flush();
                     
-                    bytes_read = file.read(buffer);
                     byte[] macTo;
                     int order = -1;
-                    System.out.println("1st time bytes_read: "+bytes_read);
                     
                     //macTo = Util.GenerateMAC(buffer, order, sessionKey, mac);
                     mac = Util.initializeMac(order, sessionKey);
                     
                     while (true) {
+                        bytes_read = file.read(buffer);
+                        String help = new String(Arrays.copyOfRange(buffer, 0, bytes_read), StandardCharsets.UTF_8);
                         order ++;
                         // Read File 48 bytes each time and print what was read
-                        if(bytes_read < 48) {
-                            System.out.println("Over and Out!\n");
-                            
-                            macTo = Util.GenerateMAC(Arrays.copyOfRange(buffer, 0, bytes_read), order, sessionKey, mac);
-                            
+                        if(bytes_read == 48) {
+                            //help = new String(buffer, StandardCharsets.UTF_8);
+                            System.out.println("Read from File: " + help + "\n");
+                            // Updating Encryption and Write to server
+                            macTo = Util.GenerateMAC(Arrays.copyOfRange(buffer, 0, bytes_read), order, sessionKey, mac, bytes_read);
                             cos.write(buffer, 0, bytes_read);
-                            cos.flush();
-                            cos.write(macTo, 0, macTo.length);
-                            cos.close();
+                            //cos.flush();
+                            cos.write(macTo);
+                            System.out.println("Cipher Length: " + buffer.length +
+                                    "\nBytes: " + bytes_read + "\n");
+                            // Counting total bytes
                             total_bytes = total_bytes + bytes_read;
+                        } else {
+                            System.out.println("Over and Out!\n");
+                            //help = new String(buffer, StandardCharsets.UTF_8);
+                            macTo = Util.GenerateMAC(Arrays.copyOfRange(buffer, 0, bytes_read), order, sessionKey, mac, bytes_read);
+                            System.out.println("Read from File: " + help + "\nMessage bytes: " + bytes_read + "\n");
+                            cos.write(Arrays.copyOfRange(buffer, 0, bytes_read));
+                            cos.flush();
+                            System.out.println("Last Bit sent!\n");
+                            cos.write(macTo);
+                            cos.flush();
+                            System.out.println("Last Mac sent! Bytes: " + macTo.length + 
+                                    "\nMac: " + Util.asHex(macTo) + "\nMessage: " + buffer + "\n");
+                            total_bytes = total_bytes + bytes_read;
+                            System.out.println("Waiting for server's closure!\n");
+                            getMode.read(buffer);
+                            help = new String(Arrays.copyOfRange(buffer, 0, bytes_read), StandardCharsets.UTF_8);
+                            System.out.println("Server says: " + help + "\n");
+                            getMode.close();
+                            file.close();
+                            cos.close();
                             break;
                         }
-                        String help = new String(buffer, StandardCharsets.UTF_8);
-                        System.out.println("Read from File: " + help + "\n");
-                        // Updating Encryption and Write to server
-                        macTo = Util.GenerateMAC(buffer, order, sessionKey, mac);
-                        cos.write(buffer, 0, bytes_read);
-                        //cos.flush();
-                        cos.write(macTo);
-                        System.out.println("Cipher Length: " + buffer.length +
-                                "\nBytes: " + bytes_read + "\n");
-                        bytes_read = file.read(buffer);
-                        // Counting total bytes
-                        total_bytes = total_bytes + bytes_read;
                     }
                     System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n");
                     System.out.println("Disconnected from server.");

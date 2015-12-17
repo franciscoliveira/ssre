@@ -35,6 +35,7 @@ import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -137,9 +138,10 @@ public class Util {
      * @param order sequence number
      * @param key secret Key user for the updates!
      * @param mac
+     * @param bytes
      * @return byte array to use
     */
-    public static byte[] GenerateMAC(byte[] message, int order, SecretKey key, Mac mac) {
+    public static byte[] GenerateMAC(byte[] message, int order, SecretKey key, Mac mac, int bytes) {
         byte[] returned = null;
         try {
             if(order < 0) {
@@ -157,7 +159,7 @@ public class Util {
                 // Updating MAC
                 mac.update(key.getEncoded());
                 mac.update((byte)order);
-                mac.update(message);
+                mac.update(Arrays.copyOfRange(message, 0, bytes));
                 returned = mac.doFinal();
                 System.out.println("Generated MAC: "  + mac + "\nUpdating! Order: " + order + 
                         "\nMac: " + Util.asHex(returned) + "\n");

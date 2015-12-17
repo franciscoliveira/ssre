@@ -81,30 +81,27 @@ public class Server {
                     oos.writeObject(signature);*/
                     // Tutorial 8 obtaining keys/certificates/validations
                     RSAPrivateKey privateKey = Util.getPrivateKeys("server");
-
-                    // Upload do certificado do servidor a partir do ValidateCertPath
+                    // Get certificate
                     ValidateCertPath validateCertPath = new ValidateCertPath();
                     X509Certificate serverCertificate = ValidateCertPath.getCertFromFile("./server.cer");
-
-                    // Envio do certificado do servidor
+                    // Send certificate
                     ObjectOutputStream oos = new ObjectOutputStream(outData);
                     oos.writeObject(serverCertificate);
                     //oos.flush();
                     System.out.println("Certificate sent to Client!\n");
-
-                    // Receção do certificado do cliente
+                    // Receives Client's certificate
                     ObjectInputStream objectIn = new ObjectInputStream(rcv);
                     X509Certificate clientCertificate = (X509Certificate) objectIn.readObject();
-                    System.out.println("Certificado do cliente recebido\n");
-
-                    //Caminho para validação do certificado do cliente a partir do ValidateCertPath
+                    System.out.println("Got Client's certificate!\n");
+                    // Check validation Path
                     CertPath clientCertPath = ValidateCertPath.createPath(clientCertificate);
-
-                    // Validação do certificado do cliente
                     Boolean verifies = validateCertPath.validate("./ca.cer", clientCertPath);
-                    System.out.println("Certificado do cliente: " + verifies + "\n");
-
-                    //Obtenção da chave pública do cliente a partir do certificado
+                    if (verifies = true) System.out.println("Client's OK! Verification: " + verifies + "\n");
+                    else {
+                        System.err.println("Certificate not valid! ERROR! BREAK!\n");
+                        break;
+                    }
+                    // Getting public key from certificate
                     PublicKey clientPublicKey = clientCertificate.getPublicKey();
                     byte[] ch = Util.challenge();
                     outData.write(ch);
@@ -150,68 +147,74 @@ public class Server {
                     mac = Util.initializeMac(order, sessionKey);
                     byte[] macArray = new byte[32];
                     byte[] serverMAC;
-                    
-                    bytes_read = cis.read(message);
-                    while(bytes_read != -1){
+                    int mac_bytes = 0;
+                    while(true){
                         order ++;
+                        bytes_read = cis.read(message);
+                        String ex = new String(Arrays.copyOfRange(message, 0, bytes_read), StandardCharsets.UTF_8);
                         // Decryption
-                        //message = cipher.update(buffer);
-                        String ex = new String(message, StandardCharsets.UTF_8);
-                        System.out.println("Message: " + ex + "\n");
-                        cis.read(macArray);
-                        
-                        serverMAC = Util.GenerateMAC(Arrays.copyOfRange(message, 0, bytes_read), order, sessionKey, mac);
-                        System.out.println("Received MAC: " + Util.asHex(macArray) + 
+                        //message = cipher.update(buffer);                        
+                       
+                        mac_bytes = cis.read(macArray);
+                        // Final Piece
+                        if(bytes_read < 48) {
+                            //message = cipher.doFinal(buffer);
+                            System.out.println("It'll all be over soon!\nFinal Piece: " + ex + "\n");
+                            serverMAC = Util.GenerateMAC(Arrays.copyOfRange(message, 0, bytes_read), order, sessionKey, mac, bytes_read);
+                            System.out.println("I'm here!\n");   
+                            if (Arrays.equals(serverMAC, macArray)){
+                                // Does final read, prints number of total bytes read
+                                // Tells the Client that everything is done!
+                                total_bytes = total_bytes + bytes_read;
+                                finalMove.write(message, 0, bytes_read);
+                                System.out.println("Got Final Piece! Over and OUT! \n Read/Wrote: " + total_bytes + "Bytes.\n" + 
+                                        "MAC OK! Over AND OUT!\n");
+                                outData.write("It's Done finally!\n".getBytes("UTF-8"));
+                                outData.close();
+                                finalMove.close();
+                                rcv.close();
+                                cis.close();
+                                break;
+                            } else {
+                                System.err.println("ERROR! Final piece corrupted!\n" + 
+                                       "Received MAC: " + Util.asHex(macArray) + 
+                                       "\nCalculated MAC: " + Util.asHex(serverMAC) + 
+                                       "\nLengths: " + macArray.length + " read Bytes. | " 
+                                       + serverMAC.length + " Calculated Bytes.\n" );
+                                break;
+                            }
+                        } else {
+                            //mac_bytes = cis.read(macArray);
+                            System.out.println("Message: " + ex + "\n");
+                            serverMAC = Util.GenerateMAC(Arrays.copyOfRange(message, 0, bytes_read), order, sessionKey, mac, bytes_read);
+                            System.out.println("Received MAC: " + Util.asHex(macArray) + 
                                 "\nCalculated MAC: " + Util.asHex(serverMAC) + 
                                 "\nLengths: " + macArray.length + " read Bytes. | " 
                                 + serverMAC.length + " Calculated Bytes.\n");
-                        if (Arrays.equals(serverMAC, macArray)){
-                            // Read ciphered text
-                            if(bytes_read < 48) {
-                                //message = cipher.doFinal(buffer);
-                                System.out.println("Final Piece! It'll all be over soon!\n");
-                                cis.read(macArray);
-                                if (Arrays.equals(serverMAC, macArray)){
-                                    total_bytes = total_bytes + bytes_read;
-                                    finalMove.write(message, 0, bytes_read);
-                                    System.out.println("Got Final Piece! Over and OUT! \n Read/Wrote: " + total_bytes + "Bytes.\n" + 
-                                            "MAC OK! Over AND OUT!\n");
-                                    finalMove.close();
-                                    rcv.close();
-                                    cis.close();
-                                    break;
-                                } else {
-                                    System.out.println("ERROR! Final piece corrupted!\n");
-                                    break;
-                                }
+                            
+                            if(Arrays.equals(serverMAC, macArray)) {
+                                System.out.println("MAC OK! Message isn't corrupeted!\nOrder: " + order + "\n");
+                                // Write in file what already has been decyphered
+                                System.out.println("Bytes: " + bytes_read + 
+                                       "\nDecrypted Message Length: " + message.length + 
+                                       "\nMessage: " + ex + "\nMAC Length: " + macArray.length + "\n");
+                                finalMove.write(message, 0, bytes_read);
+                                System.out.println("RECEIVED! Message OK!\n");
+                                total_bytes = total_bytes + bytes_read;
+                                //bytes_read = cis.read(message);
                             } else {
-                                    System.out.println("MAC OK! Message isn't corrupeted!\nOrder: " + order + "\n");
-                                    String ex2 = new String(message, StandardCharsets.UTF_8);
-                                    // Write in file what already has decyphered
-                                    System.out.println("Bytes: " + bytes_read + 
-                                            "\nDecrypted Message Length: " + message.length + 
-                                            "\nMessage: " + ex + "\nMAC Length: " + macArray.length + "\n");
-                                    finalMove.write(message, 0, bytes_read);
-                                    System.out.println("RECEIVED! CIPHER_OK\n");
-                                    total_bytes = total_bytes + bytes_read;
-                                    bytes_read = cis.read(message);
+                                System.err.println("ERROR! Message Corrupted! Mac isn't working!\n");
+                                break;
                             }
-                        } else {
-                            System.out.println("MAC NOT OK! Message is corrupted or some error occured!\n" +
-                                    "RETRY!\n");
-                            finalMove.close();
-                            break;
-                        }
+                        }    
                     }
-                } catch (Exception ex) { ex.printStackTrace(); }
+                } catch (Exception ex) { System.err.println(ex.getLocalizedMessage()); }
                 s.close();
                 System.out.println("Closed connection.");                
                 if(bytes_read == -1)
                     break;
             }           
         } catch (Exception ex) {
-            System.err.println(ex.getLocalizedMessage());
-            ex.printStackTrace();
-        }
+            System.err.println(ex.getLocalizedMessage()); }
     }
 }
