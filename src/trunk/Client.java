@@ -150,6 +150,8 @@ public class Client {
                             System.out.println("Read from File: " + help + "\n");
                             // Updating Encryption and Write to server
                             macTo = Util.GenerateMAC(Arrays.copyOfRange(buffer, 0, bytes_read), order, sessionKey, mac, bytes_read);
+                            System.out.println("Bytes read "+bytes_read);
+                            cos.write(((byte)bytes_read));
                             cos.write(buffer, 0, bytes_read);
                             //cos.flush();
                             cos.write(macTo);
@@ -162,6 +164,7 @@ public class Client {
                             //help = new String(buffer, StandardCharsets.UTF_8);
                             macTo = Util.GenerateMAC(Arrays.copyOfRange(buffer, 0, bytes_read), order, sessionKey, mac, bytes_read);
                             System.out.println("Read from File: " + help + "\nMessage bytes: " + bytes_read + "\n");
+                            cos.write(((byte)bytes_read));
                             cos.write(Arrays.copyOfRange(buffer, 0, bytes_read));
                             cos.flush();
                             System.out.println("Last Bit sent!\n");
