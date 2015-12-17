@@ -89,7 +89,7 @@ public class Server {
                     // Envio do certificado do servidor
                     ObjectOutputStream oos = new ObjectOutputStream(outData);
                     oos.writeObject(serverCertificate);
-                    oos.flush();
+                    //oos.flush();
                     System.out.println("Certificate sent to Client!\n");
 
                     // Receção do certificado do cliente
@@ -107,10 +107,10 @@ public class Server {
                     //Obtenção da chave pública do cliente a partir do certificado
                     PublicKey clientPublicKey = clientCertificate.getPublicKey();
                     byte[] ch = Util.challenge();
-                    oos.write(ch);
-                    oos.flush();
-                    byte[] response = null;
-                    bytes_read = objectIn.read(response);
+                    outData.write(ch);
+                    //oos.flush();
+                    byte[] response = new byte[256];
+                    bytes_read = rcv.read(response);
                     boolean ok = Util.verifyResponse(clientPublicKey, ch, response);
                     if(ok == true) System.out.println("Everything is ok in Challenge-Response!\n");
                     else System.out.println("ERROR in Challenge Response!\n");
@@ -126,9 +126,9 @@ public class Server {
                     //bytes_read = rcv.read(buffer);
                     
                     // Tutorial 4.3 using sessionkey and sealedObject
-                    ObjectInputStream ois = new ObjectInputStream(rcv);
+                    //ObjectInputStream ois = new ObjectInputStream(rcv);
                     
-                    SealedObject sealedObject = (SealedObject)ois.readObject();
+                    SealedObject sealedObject = (SealedObject)objectIn.readObject();
                     SecretKey sessionKey = (SecretKey)sealedObject.getObject(cipher);
                     System.out.println("Received Session Key: " + Util.asHex(sessionKey.getEncoded()) + "\n");
                     

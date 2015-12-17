@@ -512,7 +512,6 @@ public class Util {
      * 
      * @param clientKey
      * @param challenge
-     * @param response
      * @return 
      * @throws java.security.SignatureException 
      * @throws java.security.InvalidKeyException 
@@ -528,6 +527,16 @@ public class Util {
         return reply;
     }
     
+    /**
+     * 
+     * @param clientPubKey
+     * @param challenge
+     * @param challengeReply
+     * @return 
+     * @throws java.security.InvalidKeyException
+     * @throws java.security.NoSuchAlgorithmException
+     * @throws java.security.SignatureException
+     */
     public static boolean verifyResponse( PublicKey clientPubKey, byte[] challenge, byte[] challengeReply) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException{
         System.out.println("Resposta ao challenge recebida.");
 
