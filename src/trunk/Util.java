@@ -9,6 +9,11 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.net.Socket;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
@@ -488,5 +493,53 @@ public class Util {
         System.out.println("Generated " + side + " private Key! Key: " + asHex(privateKey.getEncoded()) + "\n");
 
         return privateKey;
+    }
+    
+    /**
+     * 
+     * @return
+     */
+    public static byte[] challenge() {
+        // Cria array random de bytes e envia
+        SecureRandom randomize = new SecureRandom();
+        byte[] challenge = new byte[128];
+        randomize.nextBytes(challenge);
+        System.out.println("Challenge Done!\n");
+        return challenge;
+        }
+    
+    /**
+     * 
+     * @param clientKey
+     * @param challenge
+     * @param response
+     * @return 
+     * @throws java.security.SignatureException 
+     * @throws java.security.InvalidKeyException 
+     * @throws java.security.NoSuchAlgorithmException 
+     */
+    public static byte[] response(PrivateKey clientKey, byte[] challenge) throws SignatureException, InvalidKeyException, NoSuchAlgorithmException{
+        // Verifica veracidade da resposta      
+        Signature signature = Signature.getInstance("SHA1withRSA");
+        // Verifica com chave pública do cliente
+        signature.initSign(clientKey);
+        signature.update(challenge, 0, challenge.length);
+        byte[] reply = signature.sign();
+        return reply;
+    }
+    
+    public static boolean verifyResponse( PublicKey clientPubKey, byte[] challenge, byte[] challengeReply) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException{
+        System.out.println("Resposta ao challenge recebida.");
+
+        // Verifica veracidade da resposta      
+        Signature signature = Signature.getInstance("SHA1withRSA");
+        // Verifica com chave pública do cliente
+        signature.initVerify(clientPubKey);
+        signature.update(challenge, 0, challenge.length);
+
+        // Como no tutorial 7 para verificar assinaturas
+        boolean verifies = signature.verify(challengeReply);
+        System.out.println("signature:" + verifies);
+        return verifies;
     }
 }

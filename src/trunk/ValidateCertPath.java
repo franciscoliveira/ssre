@@ -1,38 +1,43 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package trunk;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.security.cert.CertPath;
+import java.security.cert.CertPathValidator;
+import java.security.cert.CertPathValidatorException;
+import java.security.cert.CertPathValidatorResult;
+import java.security.cert.CertificateFactory;
+import java.security.cert.PKIXParameters;
+import java.security.cert.TrustAnchor;
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
 /**
  * ValidateCertPath : validates an X.509 certification path
  *      using a PKIX CertPathValidator
  *
- * Synopsis: java ValidateCertPath trustAnchor certPath
- *      or
- *           java ValidateCertPath trustAnchor targetCert intermediateCACert ...
- *
- *      The "trustAnchor" parameter is the name of a file containing
- *      an encoded X.509 trusted CA cert in DER or Base64 format. The"certPath"
- *      parameter is the name of a file containing a PKCS7 or base64 encoded
- *      X.509 cert chain. The "targetCert" and "intermediateCACert" parameters
- *      are the names of a sequence of files representing a chain of certificates.
- *      These files must contain certificates in the same format as "trustAnchor".
- * Author: Sean Mullan
- */
-import java.io.*;
-import java.security.cert.*;
-import java.util.*;
+ * **/
+
 public class ValidateCertPath {
-    public static void main(String[] args) throws Exception {
-    if (args.length == 0)
-        throw new Exception("must specify at least trustAnchor");
-    PKIXParameters params = createParams(args[0]);
-    CertPath cp = null;
-    if (args.length == 2 && (args[1].endsWith("pkcs7") || args[1].endsWith("cer"))) {
-        cp = createPath(args[1]);
-    } else {
-        cp = createPath(args);
+    
+    public Boolean validate(String trustAnchor, CertPath cp) throws Exception{
+        PKIXParameters params = createParams(trustAnchor);
+        try{
+        CertPathValidator cpv = CertPathValidator.getInstance("PKIX");
+        CertPathValidatorResult cpvr = cpv.validate(cp, params);
+        System.out.println(cpvr);
+        return true;
+        }catch(CertPathValidatorException e){System.out.println("Certificate did not validate");return false;}
     }
-    System.out.println("path: " + cp);
-    CertPathValidator cpv = CertPathValidator.getInstance("PKIX");
-    CertPathValidatorResult cpvr = cpv.validate(cp, params);
-    System.out.println(cpvr);
-    }
+
     public static PKIXParameters createParams(String anchorFile) throws Exception {
         TrustAnchor anchor = new TrustAnchor(getCertFromFile(anchorFile), null);
         Set anchors = Collections.singleton(anchor);
@@ -40,27 +45,15 @@ public class ValidateCertPath {
         params.setRevocationEnabled(false);
         return params;
     }
-    public static CertPath createPath(String certPath) throws Exception {
-        File certPathFile = new File(certPath);
-        FileInputStream certPathInputStream = new FileInputStream(certPathFile);
-        CertificateFactory cf = CertificateFactory.getInstance("X.509");
-    try {
-            return cf.generateCertPath(certPathInputStream, "PKCS7");
-    } catch (CertificateException ce) {
-        // try generateCertificates
-                      Collection c = cf.generateCertificates(certPathInputStream);
-        return cf.generateCertPath(new ArrayList(c));
-    }
-    }
-    public static CertPath createPath(String[] certs) throws Exception {
+       
+    public static CertPath createPath(X509Certificate cert) throws Exception {
     CertificateFactory cf = CertificateFactory.getInstance("X.509");
         List list = new ArrayList();
-        for (int i = 1; i < certs.length; i++) {
-            list.add(getCertFromFile(certs[i]));
-        }
+        list.add(cert);
     CertPath cp = cf.generateCertPath(list);
     return cp;
-    }
+    }   
+    
     /**
      * Get a DER or BASE64-encoded X.509 certificate from a file.
      *
@@ -68,8 +61,7 @@ public class ValidateCertPath {
      * @return X509Certificate
      * @throws Exception on error
      */
-    public static X509Certificate getCertFromFile(String certFilePath)
-        throws Exception {
+    public static X509Certificate getCertFromFile(String certFilePath) throws Exception {
         X509Certificate cert = null;
         File certFile = new File(certFilePath);
         FileInputStream certFileInputStream = new FileInputStream(certFile);

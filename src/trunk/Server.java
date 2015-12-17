@@ -15,6 +15,9 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.cert.CertPath;
+import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPrivateKey;
 import java.util.Arrays;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -58,19 +61,15 @@ public class Server {
                 OutputStream outData = s.getOutputStream();
                 outData.write(mode.getBytes("UTF-8"));
                 
-                
-                
-                
-                
                 byte[] message = new byte[48];
                 int total_bytes = 0;
                 try{
                     // Tutorial 6, sending public key to client
                     // KeyPair keyPair = Util.generateSessionRSAPair();
                     // Tutorial 7, getting public keyPair from a file and signature
-                    KeyPair keyPair = Util.retrieveRSAPair("server");
+                    /*KeyPair keyPair = Util.retrieveRSAPair("server");
                     byte[] signature = Util.retrieveSignature();
-                    System.out.println("Signature: "+Util.asHex(signature));
+                    System.out.println("Signature: " + Util.asHex(signature));
                     //if(Util.verifySignature(signature, keyPair.getPublic()))
                         System.out.println("Signature is correct");
                     
@@ -78,8 +77,43 @@ public class Server {
                     PrivateKey privateKey = keyPair.getPrivate();
                     ObjectOutputStream oos = new ObjectOutputStream(outData);
                     oos.writeObject(publicKey);
-                    System.out.println("Sent public key: "+Util.asHex(publicKey.getEncoded()));
-                    oos.writeObject(signature);
+                    System.out.println("Sent public key: " + Util.asHex(publicKey.getEncoded()));
+                    oos.writeObject(signature);*/
+                    // Tutorial 8 obtaining keys/certificates/validations
+                    RSAPrivateKey privateKey = Util.getPrivateKeys("server");
+
+                    // Upload do certificado do servidor a partir do ValidateCertPath
+                    ValidateCertPath validateCertPath = new ValidateCertPath();
+                    X509Certificate serverCertificate = ValidateCertPath.getCertFromFile("./server.cer");
+
+                    // Envio do certificado do servidor
+                    ObjectOutputStream oos = new ObjectOutputStream(outData);
+                    oos.writeObject(serverCertificate);
+                    oos.flush();
+                    System.out.println("Certificate sent to Client!\n");
+
+                    // Receção do certificado do cliente
+                    ObjectInputStream objectIn = new ObjectInputStream(rcv);
+                    X509Certificate clientCertificate = (X509Certificate) objectIn.readObject();
+                    System.out.println("Certificado do cliente recebido\n");
+
+                    //Caminho para validação do certificado do cliente a partir do ValidateCertPath
+                    CertPath clientCertPath = ValidateCertPath.createPath(clientCertificate);
+
+                    // Validação do certificado do cliente
+                    Boolean verifies = validateCertPath.validate("./ca.cer", clientCertPath);
+                    System.out.println("Certificado do cliente: " + verifies + "\n");
+
+                    //Obtenção da chave pública do cliente a partir do certificado
+                    PublicKey clientPublicKey = clientCertificate.getPublicKey();
+                    byte[] ch = Util.challenge();
+                    oos.write(ch);
+                    oos.flush();
+                    byte[] response = null;
+                    bytes_read = objectIn.read(response);
+                    boolean ok = Util.verifyResponse(clientPublicKey, ch, response);
+                    if(ok == true) System.out.println("Everything is ok in Challenge-Response!\n");
+                    else System.out.println("ERROR in Challenge Response!\n");
                     
                     FileOutputStream finalMove = new FileOutputStream("output.txt");
                     Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -96,7 +130,7 @@ public class Server {
                     
                     SealedObject sealedObject = (SealedObject)ois.readObject();
                     SecretKey sessionKey = (SecretKey)sealedObject.getObject(cipher);
-                    System.out.println("Received Session Key: "+Util.asHex(sessionKey.getEncoded()));
+                    System.out.println("Received Session Key: " + Util.asHex(sessionKey.getEncoded()) + "\n");
                     
                     // Get IV and Key from client
                     bytes_read = rcv.read(iv);

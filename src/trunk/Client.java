@@ -22,6 +22,9 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.cert.CertPath;
+import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPrivateKey;
 import java.util.Arrays;
 import java.util.Scanner;
 import javax.crypto.Cipher;
@@ -36,7 +39,7 @@ public class Client {
     public static String mode = "";
     public static Mac mac = null;
     static public void main(String[] arg) throws IOException, NoSuchAlgorithmException, InvalidKeyException, NoSuchPaddingException, InvalidAlgorithmParameterException {
-        byte[] ciphered = new byte[100];
+        byte[] aux = new byte[100];
         try {
             
             // Connect to server
@@ -59,6 +62,7 @@ public class Client {
             mode = ex;
             System.out.println("MODE: " + mode + "\n");
             
+            /*
             // Tutorial 6, receiving public key from server
             ObjectInputStream ois = new ObjectInputStream(getMode);
             PublicKey publicKey = (PublicKey)ois.readObject();
@@ -73,12 +77,45 @@ public class Client {
             {
                 System.out.println("Signature and public key from server don't match. Server isn't trusted by TA");
                 System.exit(-1);
-            }
-            
-            // Generating IV and KEY
-            int bytes_read = 0;
-            int total_bytes = 0;
-            IvParameterSpec IvEnc = Util.IvGen();
+            }*/
+                // Tutorial 8
+                // Upload da private key do client
+                RSAPrivateKey clientPrivKey = Util.getPrivateKeys("client");
+                
+                // Upload do certificado do cliente
+                ValidateCertPath validateCertPath = new ValidateCertPath();
+                X509Certificate clientCert = ValidateCertPath.getCertFromFile("./client.cer");
+
+                // Envio do certificado do cliente
+                ObjectOutputStream oos = new ObjectOutputStream(sos);
+                oos.writeObject(clientCert);
+                oos.flush();
+                System.out.println("Certificado do cliente enviado.\n");
+
+                ObjectInputStream ois = new ObjectInputStream(getMode);
+                X509Certificate serverCertificate = (X509Certificate) ois.readObject();
+                System.out.println("Certificado do servidor recebido.\n");
+
+                //Caminho para validação do certificado do servidor
+                CertPath srvCertPath = ValidateCertPath.createPath(serverCertificate);
+
+                // Validação do certificado do servidor
+                System.out.println("Certifcado de servidor validado: " + validateCertPath.validate("./ca.cer", srvCertPath) + "\n");
+
+                // Obtenção da chave pública do servidor a partir do certificado
+                PublicKey publicKey = serverCertificate.getPublicKey();
+                
+                // Generating IV and KEY
+                IvParameterSpec IvEnc = Util.IvGen();
+                
+                int bytes_read;
+                int total_bytes = 0;
+                ois.read(aux);
+                System.out.println("Received chanllenge! sending response!\n");
+                byte[] response = Util.response(clientPrivKey, aux);
+                oos.write(response);
+                //oos.flush();
+                System.out.println("Response sent!\n");
             
             // Changing the way key is generated. KeyStore is used in both sides (Tutorial 4)
             //SecretKey secretKey = Util.retrieveLongTermKey();
@@ -90,11 +127,10 @@ public class Client {
             // Tutorial 4.3 using sessionkey and sealedobject
             SecretKey sessionKey = Util.retrieveSessionKey();
             SealedObject sealedObject = new SealedObject(sessionKey, publicKeyCipher);
-            System.out.println("Sealed: "+sealedObject.toString());
-            ObjectOutputStream oos = new ObjectOutputStream(sos);
-            oos.flush();
+            System.out.println("Sealed: " + sealedObject.toString());
+            //oos.flush();
             oos.writeObject(sealedObject);
-            System.out.println("Sent Session Key: "+Util.asHex(sessionKey.getEncoded()));
+            System.out.println("Sent Session Key: " + Util.asHex(sessionKey.getEncoded()));
             
             // Sent IV 
             sos.write(IvEnc.getIV());
@@ -138,7 +174,7 @@ public class Client {
                 cos.write(buffer, 0, bytes_read);
                 //cos.flush();
                 cos.write(macTo);
-                System.out.println("Cipher Length: " + ciphered.length + 
+                System.out.println("Cipher Length: " + buffer.length + 
                         "\nBytes: " + bytes_read + "\n");
                 bytes_read = file.read(buffer);
                 // Counting total bytes
