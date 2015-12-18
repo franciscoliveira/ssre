@@ -110,7 +110,13 @@ public class Util {
         }
         return strbuf.toString();
     }
-
+    
+    /**
+     * 
+     * @param order
+     * @param key
+     * @return 
+     */
     public static Mac initializeMac(int order, SecretKey key)
     {
         try
@@ -159,8 +165,8 @@ public class Util {
                 // Updating MAC
                 mac.update(key.getEncoded());
                 mac.update((byte)order);
-                //mac.update(message);
-                returned = mac.doFinal(message);
+                //mac.update(Arrays.copyOfRange(message, 0, bytes));
+                returned = mac.doFinal(Arrays.copyOfRange(message, 0, bytes));
                 System.out.println("Generated MAC: "  + mac + "\nUpdating! Order: " + order + 
                         "\nMac: " + Util.asHex(returned) + "\n");
                 return returned;

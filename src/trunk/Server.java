@@ -154,66 +154,52 @@ public class Server {
                         cis.read(message,0,1);
                         bytes_read = message[0] & 0xFF;
                         bytes_read = cis.read(message,0,bytes_read);
-                        System.out.println("Bytes read :"+bytes_read);
+                        mac_bytes = cis.read(macArray);
+                        serverMAC = Util.GenerateMAC(Arrays.copyOfRange(message, 0, bytes_read), order, sessionKey, mac, bytes_read);
+                        //System.out.println("Bytes read: "+bytes_read);
                         
                         String ex = new String(Arrays.copyOfRange(message, 0, bytes_read), StandardCharsets.UTF_8);
                         // Decryption
                         //message = cipher.update(buffer);                        
-                       
-                        mac_bytes = cis.read(macArray);
-                        System.out.println("Read Mac: "+Util.asHex(macArray));
+                        
+                        //cis.read(macArray,0,1);
+                        //bytes_read = macArray[0] & 0xFF;
+                        //System.out.println("Read Mac: " + Util.asHex(macArray) + "\nMessage: " + Arrays.copyOfRange(message, 0, bytes_read));
                         // Final Piece
-                        if(bytes_read < 48) {
-                            System.out.println("Last Message Received: "+ex);
-                            //message = cipher.doFinal(buffer);
-                            System.out.println("It'll all be over soon!\n Final Piece: " + ex + "\n");
-                            serverMAC = Util.GenerateMAC(Arrays.copyOfRange(message, 0, bytes_read), order, sessionKey, mac, bytes_read);
-                            System.out.println("I'm here!\n");   
-                            if (Arrays.equals(serverMAC, macArray)){
-                                // Does final read, prints number of total bytes read
-                                // Tells the Client that everything is done!
-                                total_bytes = total_bytes + bytes_read;
-                                finalMove.write(message, 0, bytes_read);
-                                System.out.println("Got Final Piece! Over and OUT! \n Read/Wrote: " + total_bytes + "Bytes.\n" + 
-                                        "MAC OK! Over AND OUT!\n");
-                                outData.write("It's Done finally!\n".getBytes("UTF-8"));
-                                outData.close();
-                                finalMove.close();
-                                rcv.close();
-                                cis.close();
-                                break;
-                            } else {
-                                System.err.println("ERROR! Final piece corrupted!\n" + 
-                                       "Received MAC: " + Util.asHex(macArray) + 
-                                       "\nCalculated MAC: " + Util.asHex(serverMAC) + 
-                                       "\nLengths: " + macArray.length + " read Bytes. | " 
-                                       + serverMAC.length + " Calculated Bytes.\n" );
-                                break;
-                            }
-                        } else {
                             //mac_bytes = cis.read(macArray);
-                            System.out.println("Message: " + ex + "\n");
-                            serverMAC = Util.GenerateMAC(Arrays.copyOfRange(message, 0, bytes_read), order, sessionKey, mac, bytes_read);
-                            System.out.println("Received MAC: " + Util.asHex(macArray) + 
+                            System.out.println("Message: " + ex + "\nReceived MAC: " + Util.asHex(macArray) + 
                                 "\nCalculated MAC: " + Util.asHex(serverMAC) + 
                                 "\nLengths: " + macArray.length + " read Bytes. | " 
                                 + serverMAC.length + " Calculated Bytes.\n");
                             
+                            // Write in file what already has been decyphered
                             if(Arrays.equals(serverMAC, macArray)) {
-                                System.out.println("MAC OK! Message isn't corrupeted!\nOrder: " + order + "\n");
-                                // Write in file what already has been decyphered
-                                System.out.println("Bytes: " + bytes_read + 
+                                /*System.out.println("MAC OK! Message isn't corrupeted!\nOrder: " + order + 
+                                        "\nBytes: " + bytes_read + 
                                        "\nDecrypted Message Length: " + message.length + 
-                                       "\nMessage: " + ex + "\nMAC Length: " + macArray.length + "\n");
+                                       "\nMessage: " + ex + "\nMAC Length: " + macArray.length + "\n");*/
                                 finalMove.write(message, 0, bytes_read);
                                 System.out.println("RECEIVED! Message OK!\n");
                                 total_bytes = total_bytes + bytes_read;
+                                if(bytes_read < 48) {
+                                    System.out.println("I'm done with this shit! Who's the boss?");
+                                    outData.close();
+                                    finalMove.close();
+                                    rcv.close();
+                                    cis.close();
+                                    break;
+                                }
                                 //bytes_read = cis.read(message);
                             } else {
-                                System.err.println("ERROR! Message Corrupted! Mac isn't working!\n");
+                                System.out.println( 
+                                       "Received MAC: " + Util.asHex(macArray) + 
+                                       "\nCalculated MAC: " + Util.asHex(serverMAC) + 
+                                       "\nLengths: " + macArray.length + " read Bytes. | " 
+                                       + serverMAC.length + " Calculated Bytes.\n" );
+                                finalMove.write(message, 0, bytes_read);
                                 break;
                             }
-                        }    
+                        //}    
                     }
                 } catch (Exception ex) { System.err.println(ex.getLocalizedMessage()); }
                 s.close();

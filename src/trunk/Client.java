@@ -145,43 +145,26 @@ public class Client {
                         String help = new String(Arrays.copyOfRange(buffer, 0, bytes_read), StandardCharsets.UTF_8);
                         order ++;
                         // Read File 48 bytes each time and print what was read
-                        if(bytes_read == 48) {
                             //help = new String(buffer, StandardCharsets.UTF_8);
                             System.out.println("Read from File: " + help + "\n");
                             // Updating Encryption and Write to server
                             macTo = Util.GenerateMAC(Arrays.copyOfRange(buffer, 0, bytes_read), order, sessionKey, mac, bytes_read);
-                            System.out.println("Bytes read "+bytes_read);
+                            //System.out.println("Bytes read "+bytes_read);
                             cos.write(((byte)bytes_read));
                             cos.write(buffer, 0, bytes_read);
+                            cos.flush();
                             cos.write(macTo);
-                            System.out.println("Cipher Length: " + buffer.length +
-                                    "\nBytes: " + bytes_read + "\n");
+                            //System.out.println("Cipher Length: " + buffer.length +
+                                    //"\nBytes: " + bytes_read + "\nCipher: " + Arrays.copyOfRange(buffer, 0, bytes_read));
                             // Counting total bytes
                             total_bytes = total_bytes + bytes_read;
-                        } else {
-                            System.out.println("Over and Out!\n");
-                            //help = new String(buffer, StandardCharsets.UTF_8);
-                            macTo = Util.GenerateMAC(Arrays.copyOfRange(buffer, 0, bytes_read), order, sessionKey, mac, bytes_read);
-                            System.out.println("Read from File: " + help + "\nMessage bytes: " + bytes_read + "\n");
-                            cos.write(((byte)bytes_read));
-                            cos.write(buffer,0,bytes_read);
-                            System.out.println("Last Bit sent!\n");
-                            cos.write(macTo);
-                            System.out.println("Last Mac sent! Bytes: " + macTo.length + 
-                                    "\nMac: " + Util.asHex(macTo) + "\nMessage: " + buffer + "\n");
-                            total_bytes = total_bytes + bytes_read;
-                            System.out.println("Waiting for server's closure!\n");
-                            while(getMode.read() != -1)
-                            {
-                                System.out.println("Waiting");
+                            if(bytes_read < 48) {
+                                getMode.close();
+                                file.close();
+                                cos.close();
+                                break;
                             }
-                            help = new String(Arrays.copyOfRange(buffer, 0, bytes_read), StandardCharsets.UTF_8);
-                            System.out.println("Server says: " + help + "\n");
-                            getMode.close();
-                            file.close();
-                            cos.close();
-                            break;
-                        }
+                        //}
                     }
                     System.out.println("Read/Wrote this: " + total_bytes + " bytes.\n");
                     System.out.println("Disconnected from server.");
